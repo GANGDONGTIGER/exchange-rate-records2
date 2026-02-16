@@ -1,5 +1,6 @@
 // src/App.tsx
-import React, { useState, useEffect, ChangeEvent, FormEvent, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
 import MonthlyChart from './components/MonthlyChart';
 import LimitStatus from './components/LimitStatus';

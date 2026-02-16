@@ -1,8 +1,11 @@
-/* 기본 스타일 초기화 및 설정 */
+/* =========================================
+   1. 기본 초기화 및 글로벌 설정 (원본 유지)
+   ========================================= */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent; /* 모바일 터치 하이라이트 제거 */
 }
 
 body {
@@ -10,9 +13,9 @@ body {
     background-color: #f4f7f9;
     color: #333;
     line-height: 1.6;
+    -webkit-overflow-scrolling: touch; /* 모바일 스크롤 부드럽게 */
 }
 
-/* 전체 앱 레이아웃 */
 #app {
     max-width: 1000px;
     margin: 40px auto;
@@ -20,15 +23,164 @@ body {
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    min-height: 100vh;
 }
 
 header h1 {
     text-align: center;
     color: #2c3e50;
     margin-bottom: 30px;
+    word-break: keep-all; /* 모바일에서 제목 단어 단위 줄바꿈 */
 }
 
-/* 폼 섹션 스타일 */
+/* =========================================
+   2. 섹션 공통 스타일
+   ========================================= */
+section {
+    margin-bottom: 40px;
+}
+
+h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+    color: #34495e;
+}
+
+/* =========================================
+   3. 대시보드 (요약 정보)
+   ========================================= */
+.dashboard-section {
+    margin-bottom: 40px;
+}
+
+.dashboard-grid {
+    display: grid;
+    /* 반응형 그리드: 최소 200px, 공간 남으면 늘어남 */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.dashboard-item {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.dashboard-item h3 {
+    font-size: 1em;
+    color: #555;
+    margin-bottom: 10px;
+}
+
+.dashboard-item > p, 
+.dashboard-item > div {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.profit { color: #e74c3c !important; }
+.loss { color: #3498db !important; }
+
+/* =========================================
+   4. 한도 현황 (막대그래프)
+   ========================================= */
+.limit-dashboard-section {
+    margin-bottom: 40px;
+}
+
+.limit-container {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap; /* 화면 좁으면 줄바꿈 */
+}
+
+.limit-item {
+    flex: 1;
+    min-width: 300px; /* 너무 좁아지지 않게 방어 */
+    background-color: #fdfdfd;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.limit-item h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    color: #555;
+}
+
+.limit-tracker {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.tracker-label {
+    width: 40px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.progress-bar-container {
+    flex-grow: 1;
+    height: 28px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden; /* 내부 채움이 삐져나가지 않게 */
+}
+
+.progress-bar-fill {
+    height: 100%;
+    /* width는 React 인라인 스타일로 제어됨 */
+    background-color: #3498db;
+    border-radius: 5px;
+    transition: width 0.5s ease-in-out;
+}
+
+.tracker-remaining {
+    width: 130px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #555;
+}
+
+/* =========================================
+   5. 월별 손익 추이 (차트)
+   ========================================= */
+.trend-section {
+    margin-bottom: 40px;
+}
+
+.chart-wrapper {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #fff;
+    padding: 20px;
+}
+
+.chart-scroll-container {
+    width: 100%;
+    overflow-x: auto; /* 가로 스크롤 핵심 */
+    padding-bottom: 5px;
+}
+
+.chart-content {
+    height: 300px;
+    /* min-width는 React 컴포넌트에서 데이터 개수에 따라 인라인으로 지정됨 */
+}
+
+/* =========================================
+   6. 입력 폼 및 버튼
+   ========================================= */
 .form-section fieldset {
     border: 1px solid #e0e0e0;
     border-radius: 5px;
@@ -44,25 +196,28 @@ header h1 {
 
 .form-group {
     display: flex;
-    align-items: center;
+    flex-direction: column; /* 모바일 우선: 라벨 위, 입력창 아래 */
     margin-bottom: 15px;
 }
 
+/* PC에서는 가로 배치 */
+@media (min-width: 769px) {
+    .form-group {
+        flex-direction: row;
+        align-items: center;
+    }
+    .form-group label {
+        width: 120px;
+        margin-bottom: 0;
+        padding-right: 15px;
+    }
+}
+
 .form-group label {
-    width: 160px;
-    flex-shrink: 0;
-    padding-right: 15px;
     font-weight: 500;
+    margin-bottom: 5px; /* 모바일용 마진 */
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-    flex-grow: 1;
-    width: 100%;
-}
-
-/* 폼 요소 공통 스타일 */
 input[type="text"],
 input[type="date"],
 select,
@@ -71,58 +226,24 @@ textarea {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 1em;
+    font-size: 16px; /* iOS 확대 방지 */
     height: 42px;
-    vertical-align: middle;
 }
 
-textarea {
-    height: auto;
-    resize: vertical;
-}
-
-button[type="submit"] {
-    display: block;
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    background-color: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 1.1em;
-    height: 42px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-button[type="submit"]:hover {
-    background-color: #2980b9;
-}
-
-.form-row {
-    display: flex;
-    gap: 20px;
-}
-.form-row .form-group {
-    width: 100%;
-    margin-bottom: 0;
-}
-.form-row .form-group label {
-    width: 120px; 
-}
-
-/* [수정] 거래자 선택 버튼 그룹 스타일 */
+/* 버튼 그룹 (trader, currency, type) */
 .button-group {
     display: flex;
     gap: 8px;
-    flex-grow: 1;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* 줄바꿈 허용 */
+    width: 100%;
 }
+
 .btn-trader,
 .btn-type,
 .btn-currency {
-    padding: 8px;
+    flex: 1; /* 균등 분할 */
+    min-width: 70px; /* 최소 너비 */
+    padding: 10px;
     font-size: 1em;
     font-weight: bold;
     border: 1px solid #ccc;
@@ -133,23 +254,8 @@ button[type="submit"]:hover {
     transition: all 0.2s ease;
 }
 
-/* [추가] 2개짜리 버튼은 flex: 1로 공간 채우기 */
-.btn-trader,
-.btn-type {
-    flex: 1;
-}
-/* [추가] 통화 버튼은 고유 크기 가짐 */
 .btn-currency {
-    flex-grow: 1; /* 공간이 남으면 채우되 */
-    flex-basis: 80px; /* 기본 너비 */
-    text-align: center;
-}
-
-/* [수정] hover 및 active 스타일을 모든 버튼에 적용 */
-.btn-trader:hover,
-.btn-type:hover,
-.btn-currency:hover {
-    background-color: #e0e0e0;
+    flex: 1 1 80px; /* 통화 버튼은 조금 더 넓게 */
 }
 
 .btn-trader.active,
@@ -160,569 +266,222 @@ button[type="submit"]:hover {
     border-color: #34495e;
 }
 
-/* 대시보드 섹션 스타일 */
-.dashboard-section {
-    margin-bottom: 40px;
-}
-.dashboard-section h2 {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
-}
-.dashboard-grid {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-.dashboard-item {
-    flex: 1;
-    min-width: 220px;
-    background-color: #f9f9f9;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-}
-.dashboard-item h3 {
-    font-size: 1em;
-    color: #555;
-    margin-bottom: 10px;
-}
-.dashboard-item > p, 
-.dashboard-item > div {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #2c3e50;
-}
-#current-holdings p,
-#avg-buy-price p {
-    font-size: 1em;
-    font-weight: normal;
-    margin-bottom: 4px;
-}
-#monthly-pl-item h3 {
-    margin-bottom: 15px;
-}
-.monthly-selector-container {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-}
-.monthly-selector-container p {
-    text-align: left;
-    font-weight: bold;
-    margin-top: 5px;
-}
-
-/* 한도 현황 대시보드 스타일 */
-.limit-dashboard-section {
-    margin-bottom: 40px;
-}
-.limit-dashboard-section h2 {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
-}
-.limit-container {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-.limit-item {
-    flex: 1;
-    min-width: 300px;
-    background-color: #fdfdfd;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-}
-.limit-item h3 {
-    font-size: 1.1em;
-    color: #555;
-    margin-bottom: 20px;
-    text-align: center;
-}
-.limit-tracker {
-    display: flex;
-    align-items: center;
-    margin-bottom: 15px;
-    gap: 10px;
-}
-.tracker-label {
-    width: 40px;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-.progress-bar-container {
-    flex-grow: 1;
-    height: 28px;
-    background-color: #e0e0e0;
-    border-radius: 5px;
-}
-.progress-bar-fill {
-    height: 100%;
-    width: 0%;
+/* 저장 버튼 */
+button[type="submit"], button[type="button"] {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
     background-color: #3498db;
-    border-radius: 5px;
-    transition: width 0.5s ease-in-out;
-}
-#daily-limit-hr-fill,
-#monthly-limit-hr-fill {
-    background-color: #f7a8b8;
-}
-.tracker-remaining {
-    width: 130px;
-    flex-shrink: 0;
-    text-align: right;
-    font-size: 0.9em;
-    font-weight: bold;
-    color: #555;
-}
-
-
-/* 목록 테이블 스타일 */
-.list-section {
-    margin-top: 40px;
-}
-.list-section h2 {
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-.table-container {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-.record-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95em;
-}
-.record-table thead {
-    background-color: #f2f2f2;
-}
-.record-table th,
-.record-table td {
-    padding: 12px 15px;
-    border-bottom: 1px solid #ddd;
-    text-align: left;
-    white-space: nowrap;
-}
-.record-table th {
-    font-weight: 600;
-    color: #555;
-}
-.record-table .record-foreign-amount,
-.record-table .record-rate,
-.record-table .record-base-amount,
-.record-table .record-pl {
-    text-align: right;
-}
-.record-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-/* 완료된 거래 행 스타일 */
-.record-completed td {
-    text-decoration: line-through;
-    color: #95a5a6;
-}
-.record-completed td.profit {
-    color: #e74c3c;
-}
-.record-completed td.loss {
-    color: #3498db;
-}
-
-/* 손익(P/L) 컬럼 스타일 */
-.record-pl {
-    font-weight: bold;
-    text-align: right;
-}
-
-.dashboard-item .profit, .record-pl.profit {
-    color: #e74c3c;
-}
-.dashboard-item .loss, .record-pl.loss {
-    color: #3498db;
-}
-
-/* 관리 버튼 스타일 */
-.record-actions {
-    text-align: center;
-}
-.edit-btn, .delete-btn {
-    background: none;
+    color: white;
     border: none;
+    border-radius: 4px;
+    font-size: 1.1em;
+    font-weight: bold;
     cursor: pointer;
-    font-size: 1.2em;
-    padding: 5px;
-    margin: 0 5px;
-    transition: transform 0.2s;
-}
-.edit-btn:hover, .delete-btn:hover {
-    transform: scale(1.2);
 }
 
-/* 로딩 오버레이 및 스피너 스타일 */
-#loading-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(255, 255, 255, 0.7);
-    display: flex; justify-content: center; align-items: center;
-    z-index: 9999;
-}
-.spinner {
-    width: 60px; height: 60px;
-    border: 8px solid #f3f3f3; border-top: 8px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-.hidden {
-    display: none !important;
+/* 폼 내부 가로 배치 (금액, 환율 등) */
+.form-row {
+    display: flex;
+    gap: 20px;
 }
 
-/* 환율 계산기 섹션 스타일 */
+.form-row .form-group {
+    flex: 1;
+}
+
+/* =========================================
+   7. 환율 계산기
+   ========================================= */
 .calculator-section {
     margin-bottom: 40px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
+    background-color: #fff;
     overflow: hidden;
 }
+
 .accordion-toggle {
     width: 100%;
     background-color: #f9f9f9;
     border: none;
     padding: 15px 20px;
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-weight: bold;
     color: #34495e;
     cursor: pointer;
-    text-align: left;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.accordion-toggle span {
-    transition: transform 0.3s ease;
-}
-.accordion-toggle[aria-expanded="true"] span {
-    transform: rotate(180deg);
-}
-#calculator-content {
-    padding: 20px;
-    border-top: 1px solid #e0e0e0;
-}
-.calculator-inputs {
-    max-width: 600px;
-    margin: 0 auto 20px auto;
-}
-#calc-results-container h4 {
-    text-align: center;
-    margin: 20px 0 10px 0;
-    font-size: 1.1em;
-}
-.chart-group {
-    margin-top: 20px;
-}
+
+/* 계산기 내부 시나리오 바 */
 .h-bar-row {
     display: flex;
     align-items: center;
     margin-bottom: 8px;
     gap: 10px;
 }
+
 .h-bar-label {
-    width: 80px;
+    width: 60px;
     text-align: right;
     font-size: 0.9em;
     color: #7f8c8d;
     flex-shrink: 0;
 }
+
 .h-bar-container {
     flex-grow: 1;
     height: 24px;
     background-color: #f0f0f0;
     border-radius: 3px;
 }
+
 .h-bar-fill {
     height: 100%;
-    width: 0%;
-    border-radius: 3px;
-    transition: width 0.5s ease;
-    text-align: right;
-    padding-right: 8px;
     color: white;
-    font-size: 0.9em;
+    font-size: 0.8em;
     line-height: 24px;
+    text-align: right;
+    padding-right: 5px;
     white-space: nowrap;
-}
-.h-bar-fill.profit {
-    background-color: #e74c3c;
-}
-.h-bar-fill.loss {
-    background-color: #3498db;
+    transition: width 0.5s ease;
 }
 
-/* 반응형 웹 디자인을 위한 미디어 쿼리 */
-@media (max-width: 768px) {
-    #app {
-        margin: 20px auto;
-        padding: 15px;
-    }
-    .form-group {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .form-group label {
-        width: auto;
-        margin-bottom: 5px;
-    }
-    .form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-    .form-row .form-group {
-        width: 100%;
-        margin-bottom: 15px;
-    }
-    .form-row .form-group label {
-        width: auto;
-    }
-    .dashboard-grid {
-        flex-direction: column;
-    }
-    .limit-container {
-        flex-direction: column;
-    }
+.h-bar-fill.profit { background-color: #e74c3c; }
+.h-bar-fill.loss { background-color: #3498db; }
+
+/* =========================================
+   8. 거래 내역 (테이블 & 필터)
+   ========================================= */
+.list-section {
+    margin-top: 40px;
 }
 
-/* [추가] 페이지네이션 컨트롤 스타일 */
-.pagination-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin-top: 30px;
-}
-.pagination-controls button {
-    padding: 8px 16px;
-    border: 1px solid #ddd;
-    background-color: white;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.pagination-controls button:hover:not(:disabled) {
-    background-color: #f2f2f2;
-}
-.pagination-controls button:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-#page-info {
-    font-weight: bold;
-}
-
-/* [추가] 거래 히스토리 필터 버튼 스타일 */
 .filter-controls {
     margin-bottom: 15px;
     display: flex;
     gap: 8px;
 }
+
 .filter-btn {
-    padding: 6px 12px;
+    padding: 6px 15px;
     border: 1px solid #ddd;
     background-color: #f9f9f9;
-    border-radius: 15px; /* 타원형 버튼 */
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 0.95em;
     color: #555;
-    transition: all 0.2s ease;
 }
-.filter-btn:hover {
-    background-color: #e0e0e0;
-}
+
 .filter-btn.active {
-    background-color: #34495e; /* 활성화된 버튼 색상 */
+    background-color: #34495e;
     color: white;
-    border-color: #34495e;
     font-weight: bold;
 }
-/* [추가] 연결된 구매 기록 상세 정보 행 스타일 */
-.linked-buy-row td {
-    background-color: #f9f9f9;
-    color: #7f8c8d;
-    font-size: 0.9em;
-    padding-top: 8px;
-    padding-bottom: 8px;
-}
-.linked-buy-row .link-arrow {
-    text-align: right;
-    padding-right: 5px;
-    border: none;
-    border-right: 1px solid #ddd;
-}
-.linked-buy-row .linked-buy-details {
-    border: none;
-    padding-left: 15px;
-}
 
-/* style.css */
-
-/* --- 기존 .button-group 수정 --- */
-/*
-.button-group {
-    display: flex;
-    gap: 8px;
-    flex-grow: 1;
-    flex-wrap: wrap; 
-}
-*/
-/* -> 아래와 같이 수정/대체 */
-.button-group {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap; /* 버튼이 많을 경우 줄바꿈 허용 */
-    margin-left: 0; /* 왼쪽 여백 제거 */
-    margin-bottom: 10px; /* 아래 여백 추가 */
-}
-
-
-/* --- 기존 .btn-trader, .btn-type, .btn-currency 수정 --- */
-/*
-.btn-trader,
-.btn-type,
-.btn-currency {
-    padding: 8px;
-    font-size: 1em;
-    font-weight: bold;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
-    color: #555;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-*/
-/* -> 아래와 같이 수정/대체 */
-.btn-trader,
-.btn-type,
-.btn-currency {
-    padding: 8px;
-    font-size: 1em;
-    font-weight: bold;
-    border: 1px solid #ccc;
-    background-color: #f9f9f9;
-    color: #555;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    /* 버튼 텍스트가 길어질 경우 대비 */
-    white-space: nowrap; 
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-
-/* --- 기존 .btn-trader, .btn-type 수정 --- */
-/*
-.btn-trader,
-.btn-type {
-    flex: 1;
-}
-*/
-/* -> 아래와 같이 수정/대체 (버튼 너비 균등 분할) */
-.btn-trader,
-.btn-type {
-    flex: 1 1 0%; /* flex-grow, flex-shrink, flex-basis */
-    min-width: 80px; /* 최소 너비 설정 (너무 작아지지 않도록) */
-}
-
-
-/* --- 기존 .btn-currency 수정 --- */
-/*
-.btn-currency {
-    flex-grow: 1; 
-    flex-basis: 80px;
-    text-align: center;
-}
-*/
-/* -> 아래와 같이 수정/대체 */
-.btn-currency {
-    flex: 1 1 80px; /* flex-grow, flex-shrink, flex-basis. 기본 80px */
-    text-align: center;
-}
-
-
-/* --- .form-row 내부 .form-group 수정 (추가) --- */
-.form-row .form-group {
-    margin-bottom: 0; /* .form-row 안의 form-group은 아래 마진 제거 */
-}
-
-/* --- #transaction-date 수정 (추가) --- */
-#transaction-date {
-    max-width: 100%; /* 부모 컨테이너 너비에 맞춤 */
-    box-sizing: border-box; /* 패딩과 보더가 너비에 포함되도록 */
-}
-
-/* 월별 손익 추이 섹션 스타일 */
-.trend-section {
-    margin-bottom: 40px;
-}
-.trend-section h2 {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
-}
-
-/* 스크롤 가능한 차트 컨테이너 */
-.chart-wrapper {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #fff;
-    padding: 20px;
-}
-.chart-scroll-container {
+.table-container {
     width: 100%;
-    overflow-x: auto; /* 가로 스크롤 허용 */
-}
-.chart-content {
-    height: 300px; /* 그래프 높이 고정 */
-    min-width: 100%; /* 최소 너비 */
+    overflow-x: auto; /* 테이블 가로 스크롤 */
+    -webkit-overflow-scrolling: touch;
 }
 
-/* App.css 맨 아래에 추가 */
+.record-table {
+    width: 100%;
+    min-width: 600px; /* 최소 너비 보장 (찌그러짐 방지) */
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
 
-/* 모바일 대응 미디어 쿼리 강화 */
+.record-table th, .record-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.record-table th {
+    background-color: #f2f2f2;
+    font-weight: 600;
+    color: #555;
+}
+
+.record-completed td {
+    text-decoration: line-through;
+    color: #95a5a6;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.pagination-controls button {
+    width: auto;
+    padding: 8px 16px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+/* =========================================
+   9. 로딩 및 유틸리티
+   ========================================= */
+#loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999;
+}
+
+.spinner {
+    width: 50px; height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* =========================================
+   10. 모바일 반응형 (최종 오버라이드)
+   ========================================= */
 @media (max-width: 768px) {
     #app {
-        margin: 10px;
+        margin: 10px auto;
         padding: 15px;
-        width: auto; /* 고정 폭 해제 */
+        width: 100%; /* 화면 꽉 차게 */
+        box-shadow: none; /* 모바일은 평평하게 */
     }
 
-    /* 플렉스 컨테이너들을 세로로 정렬 */
-    .dashboard-grid,
-    .limit-container,
-    .form-row,
-    .calculator-row { /* 계산기 내부용 클래스 추가 */
+    /* 폼 관련 */
+    .form-row {
+        flex-direction: column; /* 가로 배치된 입력창 세로로 */
+        gap: 0;
+    }
+
+    /* 대시보드 */
+    .dashboard-grid {
+        grid-template-columns: 1fr 1fr; /* 2열 배치 */
+    }
+
+    /* 한도 현황 */
+    .limit-container {
         flex-direction: column;
-        gap: 15px;
     }
-
-    /* 아이템들이 꽉 차게 보이도록 설정 */
-    .dashboard-item,
-    .limit-item,
-    .form-group, 
-    .chart-wrapper {
+    
+    .limit-item {
+        min-width: 0; /* flex 자식 넘침 방지 */
         width: 100%;
-        min-width: 0; /* flex 자식 요소가 넘치는 것 방지 */
     }
 
-    .form-row .form-group {
-        margin-bottom: 0;
+    /* 계산기 */
+    #calc-results-container div[style*="display: flex"] {
+        flex-direction: column; /* 계산기 결과 차트 세로 배치 */
     }
 }

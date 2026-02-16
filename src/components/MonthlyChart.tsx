@@ -69,20 +69,23 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
   };
 
   return (
-    <div className="trend-section">
+    <div className="trend-section" style={{ overflow: 'hidden' }}> {/* overflow: hidden 추가 */}
       <h2>월별 손익 추이</h2>
-      <div className="chart-wrapper">
+      <div className="chart-wrapper" style={{ padding: '10px 0' }}> {/* 패딩 조정 */}
         <div className="chart-scroll-container">
           <div
             className="chart-content"
-            style={{ minWidth: `${Math.max(600, labels.length * 60)}px`, height: '300px' }}
+            style={{ 
+                minWidth: `${Math.max(600, labels.length * 50)}px`, /* 간격 조금 줄임 */
+                height: '250px' /* 모바일에서 너무 높지 않게 조정 */
+            }}
           >
             <Line data={data} options={options} />
           </div>
         </div>
       </div>
     </div>
-  );
+    );
 };
 
 export default MonthlyChart;
