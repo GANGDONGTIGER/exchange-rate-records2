@@ -485,3 +485,58 @@ button[type="submit"], button[type="button"] {
         flex-direction: column; /* 계산기 결과 차트 세로 배치 */
     }
 }
+
+/* src/App.css 맨 마지막에 붙여넣으세요 */
+
+/* =========================================
+   [긴급 수정] 모바일 화면 짤림/확대 방지 코드
+   ========================================= */
+@media (max-width: 768px) {
+    /* 1. 전체 컨테이너 여백 축소 */
+    #app {
+        margin: 0;           /* 바깥 여백 제거 */
+        padding: 15px 10px;  /* 내부 여백: 상하 15px, 좌우 10px (확 줄임) */
+        width: 100%;         /* 너비 100% 강제 */
+        max-width: 100vw;    /* 화면 너비 초과 금지 */
+        border-radius: 0;    /* 모바일에서는 둥근 모서리 제거 */
+        box-shadow: none;    /* 그림자 제거 */
+        overflow-x: hidden;  /* 가로 스크롤 방지 */
+    }
+
+    /* 2. 제목 글자 크기 줄임 (스크린샷에서 너무 큼) */
+    header h1 {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+    }
+
+    /* 3. 박스들의 최소 너비 강제 해제 (제일 중요!) */
+    .dashboard-item,
+    .limit-item,
+    .chart-wrapper {
+        min-width: 0 !important; /* 강제로 최소 너비 없앰 */
+        width: 100% !important;  /* 부모 크기에 딱 맞춤 */
+        margin-bottom: 15px;     /* 박스 간 간격 */
+    }
+
+    /* 4. 내부 패딩도 살짝 줄임 */
+    .dashboard-item, 
+    .limit-item {
+        padding: 15px 10px; /* 내부 여백 축소 */
+    }
+
+    /* 5. 요약 정보 숫자 크기 조정 */
+    .dashboard-item p, 
+    .dashboard-item div {
+        font-size: 1.1rem; /* 숫자가 너무 커서 줄바꿈 되는 것 방지 */
+        word-break: break-all;
+    }
+
+    /* 6. 한도 현황 내부 게이지 조정 */
+    .limit-tracker {
+        gap: 5px; /* 간격 좁힘 */
+    }
+    .tracker-remaining {
+        width: auto; /* 고정 너비 해제 */
+        font-size: 0.8rem;
+    }
+}
