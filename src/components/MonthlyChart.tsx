@@ -1,5 +1,5 @@
 // src/components/MonthlyChart.tsx
-import React from 'react';
+import React, { useRef, useEffect } from 'react'; // [추가] 훅 가져오기
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,12 +11,9 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-// 1. 데이터 라벨 플러그인 가져오기
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-
 import type { ChartData, ChartOptions } from 'chart.js';
 
-// 2. 플러그인 등록 (ChartDataLabels 추가)
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -33,6 +30,16 @@ interface MonthlyChartProps {
 }
 
 const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
+  // [추가] 스크롤 컨테이너를 제어하기 위한 ref 생성
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // [추가] 데이터가 변경되면 스크롤을 항상 오른쪽 끝으로 이동
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [monthlyData]);
+
   if (!monthlyData || Object.keys(monthlyData).length === 0) {
     return <p style={{ textAlign: 'center', padding: '20px' }}>데이터가 없습니다.</p>;
   }
@@ -62,19 +69,17 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
     maintainAspectRatio: false,
     layout: {
       padding: {
-        top: 25, // 숫자가 잘리지 않도록 위쪽 여백 확보
+        top: 25,
       }
     },
     plugins: {
       legend: { display: false },
-      // 3. 데이터 라벨 설정 (여기가 핵심!)
       datalabels: {
         display: true,
-        align: 'top', // 점 위쪽에 표시
+        align: 'top',
         anchor: 'end',
         offset: 4,
         color: (context) => {
-          // 수익이면 빨강, 손실이면 파랑, 0이면 검정
           const value = context.dataset.data[context.dataIndex] as number;
           return value > 0 ? '#e74c3c' : value < 0 ? '#3498db' : '#555';
         },
@@ -83,7 +88,6 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
           size: 11
         },
         formatter: (value) => {
-          // 천 단위 콤마 찍어서 보여주기
           return Math.round(value).toLocaleString();
         }
       }
@@ -96,7 +100,7 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
       x: {
         ticks: {
             font: {
-                size: 11 // 모바일에서 글씨 너무 크지 않게
+                size: 11
             }
         }
       }
@@ -107,8 +111,8 @@ const MonthlyChart: React.FC<MonthlyChartProps> = ({ monthlyData }) => {
     <div className="trend-section">
       <h2>월별 손익 추이</h2>
       <div className="chart-wrapper">
-        <div className="chart-scroll-container">
-          {/* 데이터 양에 따라 너비 자동 조절 (항목당 60px 확보) */}
+        {/* [수정] ref 연결 */}
+        <div className="chart-scroll-container" ref={scrollRef}>
           <div
             className="chart-content"
             style={{ 
