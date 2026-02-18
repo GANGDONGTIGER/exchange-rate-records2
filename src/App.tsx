@@ -54,6 +54,7 @@ interface FormDataState {
   exchangeRate: string;
   baseAmount: string;
   linkedBuyId: string;
+  fee: string; // [추가] 수수료 입력 필드
 }
 
 function App() {
@@ -83,7 +84,8 @@ function App() {
     foreignAmount: '',
     exchangeRate: '',
     baseAmount: '',
-    linkedBuyId: ''
+    linkedBuyId: '',
+    fee: '' // [추가] 수수료 초기값
   });
 
   // --- 데이터 불러오기 ---
@@ -122,6 +124,40 @@ function App() {
   };
 
   useEffect(() => { fetchRecords(1); }, []);
+  // ✅ [추가] 입력값, 통화, 타입이 바뀔 때마다 '원화 환산'을 자동 계산하는 로직
+  useEffect(() => {
+    const amt = parseFloat(formData.foreignAmount || '0');
+    const rate = parseFloat(formData.exchangeRate || '0');
+    const feeAmt = parseFloat(formData.fee || '0'); // 수수료 파싱
+
+    if (!isNaN(amt) && !isNaN(rate)) {
+      let calc = amt * rate;
+
+      if (formData.currency === 'BTC') {
+        // BTC일 경우: 매수면 수수료 더하고, 매도면 수수료 뺌
+        calc = formData.type === 'buy' ? calc + feeAmt : calc - feeAmt;
+      } else if (formData.currency === 'JPY') {
+        // JPY일 경우: 100엔 기준
+        calc /= 100;
+      }
+
+      const newBaseAmount = Math.round(calc).toString();
+
+      // 무한 루프 방지를 위해 값이 다를 때만 폼 데이터 업데이트
+      if (formData.baseAmount !== newBaseAmount) {
+        setFormData(prev => ({ ...prev, baseAmount: newBaseAmount }));
+      }
+    } else if (formData.baseAmount !== '') {
+      // 숫자가 비워지면 결과도 비움
+      setFormData(prev => ({ ...prev, baseAmount: '' }));
+    }
+  }, [
+    formData.foreignAmount, 
+    formData.exchangeRate, 
+    formData.fee, 
+    formData.currency, 
+    formData.type // 이 값들 중 하나라도 바뀌면 위 로직이 자동 실행됨
+  ]);
 
   // --- 헬퍼 로직 ---
   // 매도 가능한(아직 안 팔린) 매수 기록 찾기
@@ -143,27 +179,20 @@ function App() {
     
     let finalValue = value;
     
-    // 금액, 환율 등 숫자 입력 필드일 경우
-    if (['foreignAmount', 'exchangeRate', 'baseAmount'].includes(name)) {
-       finalValue = value.replace(/,/g, ''); // 콤마 제거 후 저장
+    // ✅ [수정] 배열에 'fee' 추가!
+    if (['foreignAmount', 'exchangeRate', 'baseAmount', 'fee'].includes(name)) {
+       finalValue = value.replace(/,/g, ''); 
        
-       // [핵심] 숫자가 아니면 무시 (단, 입력 중인 소수점 '.'은 허용)
        if (finalValue !== '' && finalValue !== '.' && isNaN(Number(finalValue))) return; 
     }
 
     setFormData(prev => {
       const updated = { ...prev, [name]: finalValue };
       
-      // 원화 환산 금액 자동 계산
-      if (['foreignAmount', 'exchangeRate', 'currency'].includes(name)) {
-        const amt = parseFloat(updated.foreignAmount || '0');
-        const rate = parseFloat(updated.exchangeRate || '0');
-        
-        // 둘 다 정상적인 숫자일 때만 계산
-        if (!isNaN(amt) && !isNaN(rate)) {
-          let calc = amt * rate;
-          if (updated.currency === 'JPY') calc /= 100;
-          updated.baseAmount = Math.round(calc).toString();
+      if (name === 'linkedBuyId' && value) {
+        const selectedBuy = allRecords.find(r => r.id.toString() === value);
+        if (selectedBuy) {
+            updated.foreignAmount = selectedBuy.foreign_amount.toString();
         }
       }
       return updated;
@@ -201,7 +230,7 @@ function App() {
       alert(isUpdate ? '수정되었습니다!' : '저장되었습니다!');
       fetchRecords(currentPage); // 목록 새로고침
       // 폼 초기화
-      setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '' });
+      setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' });
     } catch (error) {
       alert('작업 실패: ' + String(error));
     } finally {
@@ -242,7 +271,8 @@ function App() {
         foreignAmount: record.foreign_amount.toString(),
         exchangeRate: record.exchange_rate.toString(),
         baseAmount: record.base_amount.toString(),
-        linkedBuyId: record.linked_buy_id || ''
+        linkedBuyId: record.linked_buy_id || '',
+        fee: '' // [추가] 수수료는 수정 시 기본값으로 빈 문자열 설정
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -364,14 +394,27 @@ function App() {
                    <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
                 </div>
               </div>
-
+              {/* ✅ [추가] BTC를 선택했을 때만 마법처럼 나타나는 수수료 입력란! */}
+              {formData.currency === 'BTC' && (
+                  <div className="form-group" style={{ marginTop: '-10px', marginBottom: '15px' }}>
+                     <label style={{ color: '#e67e22', fontWeight: 'bold' }}>수수료 (원화)</label>
+                     <input 
+                       type="text" 
+                       name="fee" 
+                       value={formatDisplayValue(formData.fee)} 
+                       onChange={handleInputChange} 
+                       placeholder="예: 5000" 
+                       style={{ borderColor: '#e67e22' }} /* 눈에 띄게 주황색 테두리 */
+                     />
+                  </div>
+              )}    
                <div className="form-group">
                    <label>원화 환산</label>
                    <input type="text" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
                 </div>
 
               <button type="submit">{formData.id ? '수정 완료' : '저장하기'}</button>
-              {formData.id && <button type="button" onClick={() => setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '' })} style={{ marginTop: '10px', background: '#95a5a6' }}>취소</button>}
+              {formData.id && <button type="button" onClick={() => setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' })} style={{ marginTop: '10px', background: '#95a5a6' }}>취소</button>}
             </fieldset>
           </form>
         </section>
