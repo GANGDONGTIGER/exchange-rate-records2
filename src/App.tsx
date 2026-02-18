@@ -320,7 +320,7 @@ function App() {
               <div className="form-group">
                 <label>거래 통화</label>
                 <div className="button-group">
-                  {['USD', 'JPY', 'EUR', 'CAD', 'AUD', 'NZD', 'HKD', 'SGD'].map(c => (
+                  {['USD', 'JPY', 'EUR', 'CAD', 'AUD', 'NZD', 'HKD', 'SGD', 'BTC'].map(c => (
                     <button key={c} type="button" className={`btn-currency ${formData.currency === c ? 'active' : ''}`} onClick={() => setFormData({...formData, currency: c})}>{c}</button>
                   ))}
                 </div>
