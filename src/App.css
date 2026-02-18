@@ -538,5 +538,27 @@ button[type="submit"], button[type="button"] {
     .tracker-remaining {
         width: auto; /* 고정 너비 해제 */
         font-size: 0.8rem;
-    }
+    }   
+}
+/* =========================================
+   [수정] 환율 계산기 막대그래프 글자 가독성 개선
+   ========================================= */
+
+/* 수익 막대: 배경은 빨강, 글씨는 강제 흰색 */
+.h-bar-fill.profit {
+    background-color: #e74c3c;
+    color: white !important; 
+}
+
+/* 손실 막대: 배경은 파랑, 글씨는 강제 흰색 */
+.h-bar-fill.loss {
+    background-color: #3498db;
+    color: white !important; 
+}
+
+/* 막대 공통: 최소 너비 확보 및 그림자 추가 */
+.h-bar-fill {
+    min-width: 65px; /* 막대가 너무 짧아져서 숫자가 밖으로 튀어나가는 것 방지 */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* 혹시라도 흰색 배경과 겹칠 때 잘 보이게 테두리 효과 */
+    padding-right: 8px;
 }
