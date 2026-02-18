@@ -159,6 +159,43 @@ function App() {
     formData.type // 이 값들 중 하나라도 바뀌면 위 로직이 자동 실행됨
   ]);
 
+  // ✅ [추가] BTC를 제외한 한도 사용량 프론트엔드 직접 계산
+  const calculatedLimitUsage = useMemo(() => {
+    // 로컬 시간 기준 오늘 날짜와 이번 달 문자열 만들기 (예: "2024-11-02", "2024-11")
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const todayStr = `${year}-${month}-${day}`;
+    const currentMonthStr = `${year}-${month}`;
+
+    const usage = {
+      daily: { SW: 0, HR: 0 },
+      monthly: { SW: 0, HR: 0 }
+    };
+
+    allRecords.forEach(record => {
+      // [핵심 조건] 매수(buy) 건이면서, 통화가 'BTC'가 아닐 때만 계산에 포함!
+      if (record.type === 'buy' && record.target_currency !== 'BTC') {
+        const recordDate = record.timestamp.substring(0, 10);
+        const recordMonth = record.timestamp.substring(0, 7);
+        const trader = record.trader as 'SW' | 'HR';
+
+        // 일일 한도 누적
+        if (usage.daily[trader] !== undefined && recordDate === todayStr) {
+          usage.daily[trader] += record.base_amount;
+        }
+        // 월간 한도 누적
+        if (usage.monthly[trader] !== undefined && recordMonth === currentMonthStr) {
+          usage.monthly[trader] += record.base_amount;
+        }
+      }
+    });
+
+    return usage;
+  }, [allRecords]);
+
   // --- 헬퍼 로직 ---
   // 매도 가능한(아직 안 팔린) 매수 기록 찾기
   const availableBuyOptions = useMemo(() => {
@@ -330,7 +367,7 @@ function App() {
         </section>
 
         {/* 한도 현황 컴포넌트 추가 */}
-        <LimitStatus limitUsage={analytics.limitUsage} />
+        <LimitStatus limitUsage={calculatedLimitUsage} />
 
         <MonthlyChart monthlyData={analytics.monthlyPL} />
 
