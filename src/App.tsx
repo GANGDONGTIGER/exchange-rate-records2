@@ -445,9 +445,20 @@ function App() {
               </thead>
               <tbody>
                 {displayedRecords.map(record => {
-                  // ✅ [수정] 팔린 매수 건이거나, 매도 건 자체일 경우 모두 완료(사선) 처리
+                  // ✅ 1. 팔린 매수 건이거나, 매도 건 자체일 경우 모두 완료(사선) 처리
                   const isCompleted = analytics.soldBuyIds.includes(record.id.toString()) || record.type === 'sell';
                   
+                  // ✅ 2. [핵심 추가] 손익(P/L) 프론트엔드 직접 계산 로직
+                  let calculatedPL = record.pl; 
+                  if (record.type === 'sell' && calculatedPL === undefined && record.linked_buy_id) {
+                      // 전체 데이터(allRecords)에서 짝꿍이 되는 매수 기록을 찾습니다.
+                      const linkedBuy = allRecords.find(r => r.id.toString() === record.linked_buy_id);
+                      if (linkedBuy) {
+                          // 손익 = 매도한 원화 금액 - 매수한 원화 금액
+                          calculatedPL = record.base_amount - linkedBuy.base_amount;
+                      }
+                  }
+
                   return (
                     <tr key={record.id} className={isCompleted ? 'record-completed' : ''}>
                       <td>{record.timestamp.substring(0, 10)}</td>
@@ -459,14 +470,13 @@ function App() {
                       <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
                         {record.type === 'buy' ? '매수' : '매도'}
                       </td>
-                      {/* ✅ [추가] 손익 데이터 표시 (매도 건일 때만 표시, 색상 적용) */}
-                      <td className={`record-pl ${record.pl && record.pl > 0 ? 'profit' : record.pl && record.pl < 0 ? 'loss' : ''}`}>
-                        {record.type === 'sell' && record.pl !== undefined
-                          ? `${Math.round(record.pl).toLocaleString()}`
+                      {/* ✅ 3. [수정] 위에서 계산한 calculatedPL 값을 사용하도록 변경 */}
+                      <td className={`record-pl ${calculatedPL && calculatedPL > 0 ? 'profit' : calculatedPL && calculatedPL < 0 ? 'loss' : ''}`}>
+                        {record.type === 'sell' && calculatedPL !== undefined
+                          ? `${Math.round(calculatedPL).toLocaleString()}`
                           : '-'}
                       </td>
                       <td className="record-actions">
-                          {/* CSS에 맞춰 클래스네임(edit-btn, delete-btn) 적용 */}
                           <button className="edit-btn" onClick={() => handleEdit(record)}>✏️</button>
                           <button className="delete-btn" onClick={() => handleDelete(record.id)}>🗑️</button>
                       </td>
