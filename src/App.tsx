@@ -20,6 +20,7 @@ interface RecordData {
   exchange_rate: number;
   base_amount: number;
   linked_buy_id?: string | null;
+  pl?: number; // 매도 시 계산된 손익 (원화)
 }
 
 interface AnalyticsData {
@@ -375,9 +376,10 @@ function App() {
           </form>
         </section>
 
+        {/* --- 기존 list-section 안의 table-container 부분을 이걸로 교체하세요 --- */}
         <section className="list-section">
           <h2>거래 히스토리</h2>
-          <div className="filter-controls" style={{ marginBottom: '15px' }}>
+          <div className="filter-controls">
              <button className={`filter-btn ${filterTrader === 'all' ? 'active' : ''}`} onClick={() => setFilterTrader('all')}>전체</button>
              <button className={`filter-btn ${filterTrader === 'SW' ? 'active' : ''}`} onClick={() => setFilterTrader('SW')}>SW</button>
              <button className={`filter-btn ${filterTrader === 'HR' ? 'active' : ''}`} onClick={() => setFilterTrader('HR')}>HR</button>
@@ -394,34 +396,47 @@ function App() {
                   <th>환율</th>
                   <th>원화금액</th>
                   <th>타입</th>
+                  <th>손익</th> {/* ✅ [추가] 손익 컬럼 */}
                   <th>관리</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedRecords.map(record => (
-                  <tr key={record.id} className={analytics.soldBuyIds.includes(record.id.toString()) ? 'record-completed' : ''}>
-                    <td>{record.timestamp.substring(0, 10)}</td>
-                    <td>{record.trader}</td>
-                    <td>{record.target_currency}</td>
-                    <td>{Number(record.foreign_amount).toLocaleString()}</td>
-                    <td>{Number(record.exchange_rate).toLocaleString()}</td>
-                    <td>{Math.round(record.base_amount).toLocaleString()}</td>
-                    <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
-                      {record.type === 'buy' ? '매수' : '매도'}
-                    </td>
-                    <td>
-                        <button onClick={() => handleEdit(record)} style={{ marginRight: '5px', border: 'none', background: 'none', cursor: 'pointer' }}>✏️</button>
-                        <button onClick={() => handleDelete(record.id)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>🗑️</button>
-                    </td>
-                  </tr>
-                ))}
+                {displayedRecords.map(record => {
+                  // ✅ [수정] 팔린 매수 건이거나, 매도 건 자체일 경우 모두 완료(사선) 처리
+                  const isCompleted = analytics.soldBuyIds.includes(record.id.toString()) || record.type === 'sell';
+                  
+                  return (
+                    <tr key={record.id} className={isCompleted ? 'record-completed' : ''}>
+                      <td>{record.timestamp.substring(0, 10)}</td>
+                      <td>{record.trader}</td>
+                      <td>{record.target_currency}</td>
+                      <td className="record-foreign-amount">{Number(record.foreign_amount).toLocaleString()}</td>
+                      <td className="record-rate">{Number(record.exchange_rate).toLocaleString()}</td>
+                      <td className="record-base-amount">{Math.round(record.base_amount).toLocaleString()}</td>
+                      <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
+                        {record.type === 'buy' ? '매수' : '매도'}
+                      </td>
+                      {/* ✅ [추가] 손익 데이터 표시 (매도 건일 때만 표시, 색상 적용) */}
+                      <td className={`record-pl ${record.pl && record.pl > 0 ? 'profit' : record.pl && record.pl < 0 ? 'loss' : ''}`}>
+                        {record.type === 'sell' && record.pl !== undefined
+                          ? `${Math.round(record.pl).toLocaleString()}`
+                          : '-'}
+                      </td>
+                      <td className="record-actions">
+                          {/* CSS에 맞춰 클래스네임(edit-btn, delete-btn) 적용 */}
+                          <button className="edit-btn" onClick={() => handleEdit(record)}>✏️</button>
+                          <button className="delete-btn" onClick={() => handleDelete(record.id)}>🗑️</button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           
           <div className="pagination-controls">
               <button disabled={currentPage === 1} onClick={() => fetchRecords(currentPage - 1)}>이전</button>
-              <span style={{ margin: '0 10px', fontWeight: 'bold' }}>Page {currentPage} / {totalPages}</span>
+              <span id="page-info">Page {currentPage} / {totalPages}</span>
               <button disabled={currentPage === totalPages} onClick={() => fetchRecords(currentPage + 1)}>다음</button>
           </div>
         </section>
