@@ -136,33 +136,30 @@ function App() {
   }, [allRecords, formData.type, formData.trader, formData.currency, analytics.soldBuyIds]);
 
   // 입력 핸들러
+  // [수정된 입력 핸들러]
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
     let finalValue = value;
+    
+    // 금액, 환율 등 숫자 입력 필드일 경우
     if (['foreignAmount', 'exchangeRate', 'baseAmount'].includes(name)) {
-       finalValue = value.replace(/,/g, '');
-       if (isNaN(Number(finalValue))) return; 
+       finalValue = value.replace(/,/g, ''); // 콤마 제거 후 저장
+       
+       // [핵심] 숫자가 아니면 무시 (단, 입력 중인 소수점 '.'은 허용)
+       if (finalValue !== '' && finalValue !== '.' && isNaN(Number(finalValue))) return; 
     }
 
     setFormData(prev => {
       const updated = { ...prev, [name]: finalValue };
       
-      // 매수 건 선택 시, 해당 건의 정보로 자동 채우기
-      if (name === 'linkedBuyId' && value) {
-        const selectedBuy = allRecords.find(r => r.id.toString() === value);
-        if (selectedBuy) {
-            updated.foreignAmount = selectedBuy.foreign_amount.toString();
-            // 환율은 매수 당시 환율이 아니라 현재 매도 환율을 입력해야 하므로 비워두거나 유지
-        }
-      }
-
-      // 원화 환산 자동 계산
+      // 원화 환산 금액 자동 계산
       if (['foreignAmount', 'exchangeRate', 'currency'].includes(name)) {
         const amt = parseFloat(updated.foreignAmount || '0');
         const rate = parseFloat(updated.exchangeRate || '0');
         
-        if (amt && rate) {
+        // 둘 다 정상적인 숫자일 때만 계산
+        if (!isNaN(amt) && !isNaN(rate)) {
           let calc = amt * rate;
           if (updated.currency === 'JPY') calc /= 100;
           updated.baseAmount = Math.round(calc).toString();
@@ -249,7 +246,18 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const formatNum = (num: string | number) => num ? Number(num).toLocaleString() : '';
+  const formatDisplayValue = (value: string | number) => {
+      if (value === null || value === undefined || value === '') return '';
+      const strVal = String(value).replace(/,/g, ''); // 기존 콤마 제거
+      
+      if (strVal === '.') return '.'; // 처음에 점(.)만 찍은 경우 허용
+
+      const parts = strVal.split('.');
+      parts[0] = Number(parts[0]).toLocaleString(); // 정수부 콤마 처리
+      
+      // 소수점이 있으면 뒤에 그대로 붙여줌
+      return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+    };
 
   // 필터링된 목록
   const displayedRecords = filterTrader === 'all' 
@@ -348,17 +356,17 @@ function App() {
               <div className="form-row">
                 <div className="form-group">
                    <label>금액 (외화)</label>
-                   <input type="text" name="foreignAmount" value={formatNum(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
+                   <input type="text" name="foreignAmount" value={formatDisplayValue(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
                 </div>
                 <div className="form-group">
                    <label>환율</label>
-                   <input type="text" name="exchangeRate" value={formatNum(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
+                   <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
                 </div>
               </div>
 
                <div className="form-group">
                    <label>원화 환산</label>
-                   <input type="text" name="baseAmount" value={formatNum(formData.baseAmount)} readOnly placeholder="자동 계산" />
+                   <input type="text" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
                 </div>
 
               <button type="submit">{formData.id ? '수정 완료' : '저장하기'}</button>
