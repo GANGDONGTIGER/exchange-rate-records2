@@ -357,11 +357,11 @@ function App() {
             </div>
             <div className="dashboard-item">
               <h3>현재 보유 외화</h3>
-              <div>{Object.entries(analytics.holdings).map(([curr, amt]) => (<p key={curr}>{curr}: {Number(amt).toLocaleString()}</p>))}</div>
+              <div style={{display: 'inline-block', textAlign:'left'}}>{Object.entries(analytics.holdings).map(([curr, amt]) => (<p key={curr}>{curr}: {Number(amt).toLocaleString()}</p>))}</div>
             </div>
             <div className="dashboard-item">
               <h3>평균 매입가</h3>
-              <div>{Object.entries(analytics.avgBuyPrices).map(([curr, price]) => (<p key={curr}>{curr}: {Number(price).toLocaleString()} 원</p>))}</div>
+              <div style={{display: 'inline-block', textAlign:'left'}}>{Object.entries(analytics.avgBuyPrices).map(([curr, price]) => (<p key={curr}>{curr}: {Number(price).toLocaleString()} 원</p>))}</div>
             </div>
           </div>
         </section>
