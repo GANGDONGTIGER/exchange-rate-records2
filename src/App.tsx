@@ -1,5 +1,5 @@
 // src/App.tsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
 import MonthlyChart from './components/MonthlyChart';
@@ -482,42 +482,56 @@ function App() {
               </thead>
               <tbody>
                 {displayedRecords.map(record => {
-                  // ✅ 1. 팔린 매수 건이거나, 매도 건 자체일 경우 모두 완료(사선) 처리
                   const isCompleted = analytics.soldBuyIds.includes(record.id.toString()) || record.type === 'sell';
                   
-                  // ✅ 2. [핵심 추가] 손익(P/L) 프론트엔드 직접 계산 로직
                   let calculatedPL = record.pl; 
-                  if (record.type === 'sell' && calculatedPL === undefined && record.linked_buy_id) {
-                      // 전체 데이터(allRecords)에서 짝꿍이 되는 매수 기록을 찾습니다.
-                      const linkedBuy = allRecords.find(r => r.id.toString() === record.linked_buy_id);
-                      if (linkedBuy) {
-                          // 손익 = 매도한 원화 금액 - 매수한 원화 금액
+                  let linkedBuy = null; // ✅ 짝꿍 매수 기록을 담을 바구니
+
+                  if (record.type === 'sell' && record.linked_buy_id) {
+                      // 전체 데이터에서 원본 매수 건을 찾습니다.
+                      linkedBuy = allRecords.find(r => r.id.toString() === record.linked_buy_id);
+                      if (calculatedPL === undefined && linkedBuy) {
                           calculatedPL = record.base_amount - linkedBuy.base_amount;
                       }
                   }
 
                   return (
-                    <tr key={record.id} className={isCompleted ? 'record-completed' : ''}>
-                      <td>{record.timestamp.substring(0, 10)}</td>
-                      <td>{record.trader}</td>
-                      <td>{record.target_currency}</td>
-                      <td className="record-foreign-amount">{Number(record.foreign_amount).toLocaleString()}</td>
-                      <td className="record-rate">{Number(record.exchange_rate).toLocaleString()}</td>
-                      <td className="record-base-amount">{Math.round(record.base_amount).toLocaleString()}</td>
-                      <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
-                        {record.type === 'buy' ? '매수' : '매도'}
-                      </td>
-                      {/* ✅ 3. [수정] 위에서 계산한 calculatedPL 값을 사용하도록 변경 */}
-                      <td className={`record-pl ${calculatedPL && calculatedPL > 0 ? 'profit' : calculatedPL && calculatedPL < 0 ? 'loss' : ''}`}>
-                        {record.type === 'sell' && calculatedPL !== undefined
-                          ? `${Math.round(calculatedPL).toLocaleString()}`
-                          : '-'}
-                      </td>
-                      <td className="record-actions">
-                          <button className="edit-btn" onClick={() => handleEdit(record)}>✏️</button>
-                          <button className="delete-btn" onClick={() => handleDelete(record.id)}>🗑️</button>
-                      </td>
-                    </tr>
+                    /* ✅ 두 줄 이상을 반환할 때는 Fragment로 묶어줍니다 */
+                    <Fragment key={record.id}>
+                      {/* 1. 기존 메인 거래 행 */}
+                      <tr className={isCompleted ? 'record-completed' : ''}>
+                        <td>{record.timestamp.substring(0, 10)}</td>
+                        <td>{record.trader}</td>
+                        <td>{record.target_currency}</td>
+                        <td className="record-foreign-amount">{Number(record.foreign_amount).toLocaleString()}</td>
+                        <td className="record-rate">{Number(record.exchange_rate).toLocaleString()}</td>
+                        <td className="record-base-amount">{Math.round(record.base_amount).toLocaleString()}</td>
+                        <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
+                          {record.type === 'buy' ? '매수' : '매도'}
+                        </td>
+                        <td className={`record-pl ${calculatedPL && calculatedPL > 0 ? 'profit' : calculatedPL && calculatedPL < 0 ? 'loss' : ''}`}>
+                          {record.type === 'sell' && calculatedPL !== undefined
+                            ? `${Math.round(calculatedPL).toLocaleString()}`
+                            : '-'}
+                        </td>
+                        <td className="record-actions">
+                            <button className="edit-btn" onClick={() => handleEdit(record)}>✏️</button>
+                            <button className="delete-btn" onClick={() => handleDelete(record.id)}>🗑️</button>
+                        </td>
+                      </tr>
+
+                      {/* 2. ✅ [추가] 짝꿍 매수 건이 있는 경우 바로 밑에 꼬리표 행 렌더링 */}
+                      {record.type === 'sell' && linkedBuy && (
+                        <tr className="linked-buy-row">
+                          <td colSpan={3} className="link-arrow">
+                            ↳ 매수 원본
+                          </td>
+                          <td colSpan={6} className="linked-buy-details">
+                            {linkedBuy.timestamp.substring(0, 10)} | 금액: {Number(linkedBuy.foreign_amount).toLocaleString()} {linkedBuy.target_currency} | 환율: {Number(linkedBuy.exchange_rate).toLocaleString()} | 원화: {Math.round(linkedBuy.base_amount).toLocaleString()}원
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
