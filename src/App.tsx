@@ -207,6 +207,41 @@ function App() {
     return usage;
   }, [allRecords]);
 
+  // ✅ 사라졌던 '원화 환산' 자동 계산 로직 복구!
+  useEffect(() => {
+    const amt = parseFloat(formData.foreignAmount || '0');
+    const rate = parseFloat(formData.exchangeRate || '0');
+    const feeAmt = parseFloat(formData.fee || '0'); // 수수료 파싱
+
+    if (!isNaN(amt) && !isNaN(rate)) {
+      let calc = amt * rate;
+
+      if (formData.currency === 'BTC') {
+        // BTC일 경우: 매수면 수수료 더하고, 매도면 수수료 뺌
+        calc = formData.type === 'buy' ? calc + feeAmt : calc - feeAmt;
+      } else if (formData.currency === 'JPY') {
+        // JPY일 경우: 100엔 기준
+        calc /= 100;
+      }
+
+      const newBaseAmount = Math.round(calc).toString();
+
+      // 무한 루프 방지를 위해 값이 다를 때만 폼 데이터 업데이트
+      if (formData.baseAmount !== newBaseAmount) {
+        setFormData(prev => ({ ...prev, baseAmount: newBaseAmount }));
+      }
+    } else if (formData.baseAmount !== '') {
+      // 숫자가 비워지면 결과도 비움
+      setFormData(prev => ({ ...prev, baseAmount: '' }));
+    }
+  }, [
+    formData.foreignAmount, 
+    formData.exchangeRate, 
+    formData.fee, 
+    formData.currency, 
+    formData.type // 이 값들 중 하나라도 바뀌면 위 로직이 자동 실행됨
+  ]);
+
   // --- 헬퍼 로직 ---
   // 매도 가능한(아직 안 팔린) 매수 기록 찾기
   const availableBuyOptions = useMemo(() => {
