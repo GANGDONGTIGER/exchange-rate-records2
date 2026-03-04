@@ -1,8 +1,8 @@
 // src/App.tsx
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, Fragment, lazy, Suspense } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
-import MonthlyChart from './components/MonthlyChart';
+const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 import LimitStatus from './components/LimitStatus';
 import Calculator from './components/Calculator';
 
@@ -94,7 +94,34 @@ function App() {
       alert("App.tsx 파일에서 SCRIPT_URL을 먼저 설정해주세요!");
       return;
     }
+    const hasCache = localStorage.getItem('cached_records');
+    if (!hasCache) setLoading(true);
     
+    try {
+      const response = await fetch(`${SCRIPT_URL}?page=${page}&limit=50`);
+      const data: ApiResponse = await response.json();
+      
+      if (data.records) {
+        setRecords(data.records);
+        setAnalytics(data.analytics);
+        setTotalPages(Math.ceil(data.totalRecords / 50));
+        setCurrentPage(page);
+        
+        const allRecs = data.allRecordsForFilter || data.records;
+        setAllRecords(allRecs);
+
+        // ✅ [추가] 다음번 접속을 위해 폰 저장소(캐시)에 최신 데이터 구워놓기
+        localStorage.setItem('cached_records', JSON.stringify(data.records));
+        localStorage.setItem('cached_analytics', JSON.stringify(data.analytics));
+        localStorage.setItem('cached_allRecords', JSON.stringify(allRecs));
+      }
+    } catch (error) {
+      console.error("데이터 로드 실패:", error);
+    } finally {
+      setLoading(false); // 작업이 끝나면 무조건 로딩창 끄기
+    };
+  
+
     setLoading(true);
     try {
       // 페이지네이션과 필터링을 서버에서 처리하거나, 전체를 받아와서 클라이언트에서 처리
@@ -125,39 +152,23 @@ function App() {
 
   useEffect(() => { fetchRecords(1); }, []);
   // ✅ [추가] 입력값, 통화, 타입이 바뀔 때마다 '원화 환산'을 자동 계산하는 로직
+  // ✅ [수정] 앱이 처음 켜질 때 실행되는 마법
   useEffect(() => {
-    const amt = parseFloat(formData.foreignAmount || '0');
-    const rate = parseFloat(formData.exchangeRate || '0');
-    const feeAmt = parseFloat(formData.fee || '0'); // 수수료 파싱
+    // 1. 폰에 저장해둔 데이터가 있는지 확인
+    const cachedRecords = localStorage.getItem('cached_records');
+    const cachedAnalytics = localStorage.getItem('cached_analytics');
+    const cachedAll = localStorage.getItem('cached_allRecords');
 
-    if (!isNaN(amt) && !isNaN(rate)) {
-      let calc = amt * rate;
-
-      if (formData.currency === 'BTC') {
-        // BTC일 경우: 매수면 수수료 더하고, 매도면 수수료 뺌
-        calc = formData.type === 'buy' ? calc + feeAmt : calc - feeAmt;
-      } else if (formData.currency === 'JPY') {
-        // JPY일 경우: 100엔 기준
-        calc /= 100;
-      }
-
-      const newBaseAmount = Math.round(calc).toString();
-
-      // 무한 루프 방지를 위해 값이 다를 때만 폼 데이터 업데이트
-      if (formData.baseAmount !== newBaseAmount) {
-        setFormData(prev => ({ ...prev, baseAmount: newBaseAmount }));
-      }
-    } else if (formData.baseAmount !== '') {
-      // 숫자가 비워지면 결과도 비움
-      setFormData(prev => ({ ...prev, baseAmount: '' }));
+    // 2. 있다면 서버 응답을 기다리지 않고 화면에 즉시 0.1초 만에 뿌림!
+    if (cachedRecords && cachedAnalytics && cachedAll) {
+      setRecords(JSON.parse(cachedRecords));
+      setAnalytics(JSON.parse(cachedAnalytics));
+      setAllRecords(JSON.parse(cachedAll));
     }
-  }, [
-    formData.foreignAmount, 
-    formData.exchangeRate, 
-    formData.fee, 
-    formData.currency, 
-    formData.type // 이 값들 중 하나라도 바뀌면 위 로직이 자동 실행됨
-  ]);
+
+    // 3. 화면을 띄워놓은 상태로, 백그라운드에서 최신 데이터를 가져옴
+    fetchRecords(1); 
+  }, []);
 
   // ✅ [추가] BTC를 제외한 한도 사용량 프론트엔드 직접 계산
   const calculatedLimitUsage = useMemo(() => {
@@ -368,8 +379,9 @@ function App() {
 
         {/* 한도 현황 컴포넌트 추가 */}
         <LimitStatus limitUsage={calculatedLimitUsage} />
-
-        <MonthlyChart monthlyData={analytics.monthlyPL} />
+        <Suspense>
+          <MonthlyChart monthlyData={analytics.monthlyPL} />
+        </Suspense>
 
         <section className="form-section">
           <form onSubmit={handleSubmit}>
