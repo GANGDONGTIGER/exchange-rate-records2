@@ -273,9 +273,11 @@ function App() {
     const isUpdate = !!formData.id;
 
     // ✅ [추가] 선택한 날짜에 '저장 버튼을 누르는 현재 시/분/초' 합치기
+    // ✅ [수정] 자바스크립트 시차(Timezone) 버그를 막기 위한 철통 방어 로직!
     const now = new Date();
-    const finalDate = new Date(formData.date);
-    finalDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    const [year, month, day] = formData.date.split('-').map(Number);
+    // 영국 시간으로 착각하지 못하게 연, 월, 일, 시, 분, 초를 로컬 기준으로 명확히 조립합니다.
+    const finalDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
 
     // 파이어베이스에 보낼 데이터 포장
     const payload = {
