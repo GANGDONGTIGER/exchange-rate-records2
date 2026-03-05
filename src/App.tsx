@@ -272,12 +272,17 @@ function App() {
     setLoading(true);
     const isUpdate = !!formData.id;
 
+    // ✅ [추가] 선택한 날짜에 '저장 버튼을 누르는 현재 시/분/초' 합치기
+    const now = new Date();
+    const finalDate = new Date(formData.date);
+    finalDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
     // 파이어베이스에 보낼 데이터 포장
     const payload = {
       trader: formData.trader,
       type: formData.type,
       target_currency: formData.currency,
-      timestamp: formData.date + "T00:00:00Z", // 날짜 포맷팅
+      timestamp: finalDate.toISOString(), // 날짜 포맷팅
       foreign_amount: parseFloat(formData.foreignAmount),
       exchange_rate: parseFloat(formData.exchangeRate),
       base_amount: parseInt(formData.baseAmount, 10),
