@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
 
 // ✅ [추가] 파이어베이스 라이브러리와 열쇠(db) 가져오기
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 
 const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
