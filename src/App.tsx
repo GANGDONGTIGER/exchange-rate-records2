@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
 
 // ✅ [추가] 파이어베이스 라이브러리와 열쇠(db) 가져오기
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
@@ -319,6 +319,61 @@ function App() {
     }
   };
 
+  // ------------------------------------------------------------------
+  // 🚨 [임시] 구글 시트 -> 파이어베이스 데이터 1회성 이사 함수
+  // ------------------------------------------------------------------
+  const migrateDataFromGoogleSheet = async () => {
+    if (!confirm("정말 구글 시트 데이터를 파이어베이스로 복사하시겠습니까? (딱 1번만 실행하세요!)")) return;
+    
+    setLoading(true);
+    try {
+      // 1. 기존 구글 시트에서 전체 데이터 가져오기 (본인의 원래 SCRIPT_URL 입력)
+      const OLD_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0skZAuWgTMGOuTehPepXfIbUihjagRDQfTVaFHVjWbVC2JqRkTNNxGVtE9DMuaHi6cA/exec";
+      
+      console.log("구글 시트에서 데이터 가져오는 중...");
+      const response = await fetch(`${OLD_SCRIPT_URL}?page=1&limit=5000`); // 넉넉하게 5000개 호출
+      const data = await response.json();
+      
+      const allRecordsToMigrate = data.allRecordsForFilter || data.records;
+      
+      if (!allRecordsToMigrate || allRecordsToMigrate.length === 0) {
+        alert("옮길 데이터가 없습니다.");
+        setLoading(false);
+        return;
+      }
+
+      console.log(`총 ${allRecordsToMigrate.length}개의 데이터를 파이어베이스로 복사합니다...`);
+
+      // 2. 파이어베이스에 하나씩 쑤셔넣기 (기존 ID 완벽 유지)
+      for (const record of allRecordsToMigrate) {
+        // 기존 ID(t170000000 등)를 그대로 문서 이름으로 사용
+        const docRef = doc(db, 'records', record.id.toString()); 
+        
+        await setDoc(docRef, {
+          trader: record.trader,
+          type: record.type,
+          target_currency: record.target_currency,
+          // 구글 시트의 날짜 형식을 파이어베이스가 좋아하는 표준 ISO 형식으로 고정
+          timestamp: new Date(record.timestamp).toISOString(), 
+          foreign_amount: Number(record.foreign_amount),
+          exchange_rate: Number(record.exchange_rate),
+          base_amount: Number(record.base_amount),
+          linked_buy_id: record.linked_buy_id ? record.linked_buy_id.toString() : null,
+          fee: record.fee ? Number(record.fee) : 0
+        });
+      }
+
+      alert("🎉 데이터 이사가 완벽하게 끝났습니다! 화면을 새로고침 해주세요.");
+      
+    } catch (error) {
+      console.error("이사 중 에러 발생:", error);
+      alert("데이터 이사 실패: " + String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+  // ------------------------------------------------------------------
+
   const handleEdit = (record: RecordData) => {
     if (record.type === 'sell') {
         alert("매도 기록은 데이터 꼬임 방지를 위해 삭제 후 다시 입력해주세요.");
@@ -361,6 +416,11 @@ function App() {
       </header>
 
       <main>
+        {/* 👇 임시 데이터 이사 버튼 추가 👇 */}
+        <button onClick={migrateDataFromGoogleSheet} style={{ background: '#e74c3c', color: 'white', width: '100%', marginBottom: '20px', padding: '15px' }}>
+          🚨 구글 시트 데이터 파이어베이스로 이사하기 (1회만 클릭)
+        </button>
+        
         <Calculator records={allRecords} soldBuyIds={analytics.soldBuyIds} />
 
         <section className="dashboard-section">
