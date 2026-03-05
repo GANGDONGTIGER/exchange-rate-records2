@@ -272,19 +272,22 @@ function App() {
     setLoading(true);
     const isUpdate = !!formData.id;
 
-    // ✅ [추가] 선택한 날짜에 '저장 버튼을 누르는 현재 시/분/초' 합치기
-    // ✅ [수정] 자바스크립트 시차(Timezone) 버그를 막기 위한 철통 방어 로직!
+    // ✅ [최종 수정] 자바스크립트의 영국 시간(UTC) 변환 자체를 무시하고, 화면에 보이는 텍스트 그대로 강제 조립!
     const now = new Date();
-    const [year, month, day] = formData.date.split('-').map(Number);
-    // 영국 시간으로 착각하지 못하게 연, 월, 일, 시, 분, 초를 로컬 기준으로 명확히 조립합니다.
-    const finalDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+
+    // 사용자가 고른 달력 날짜에 현재 시간을 그냥 글자로 이어 붙여버립니다. (예: "2026-03-05T08:44:00.000Z")
+    const fixedTimestamp = `${formData.date}T${hh}:${mm}:${ss}.000Z`;
+
 
     // 파이어베이스에 보낼 데이터 포장
     const payload = {
       trader: formData.trader,
       type: formData.type,
       target_currency: formData.currency,
-      timestamp: finalDate.toISOString(), // 날짜 포맷팅
+      timestamp: fixedTimestamp,
       foreign_amount: parseFloat(formData.foreignAmount),
       exchange_rate: parseFloat(formData.exchangeRate),
       base_amount: parseInt(formData.baseAmount, 10),
