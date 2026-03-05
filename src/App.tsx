@@ -2,12 +2,16 @@
 import { useState, useEffect, useMemo, Fragment, lazy, Suspense } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import './App.css';
+
+// ✅ [추가] 파이어베이스 라이브러리와 열쇠(db) 가져오기
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { db } from './firebase';
+
 const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 import LimitStatus from './components/LimitStatus';
 import Calculator from './components/Calculator';
 
-// ⚠️ 본인의 Google Apps Script URL 입력 (필수!)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw0skZAuWgTMGOuTehPepXfIbUihjagRDQfTVaFHVjWbVC2JqRkTNNxGVtE9DMuaHi6cA/exec";
+// --- ❌ 기존 GAS SCRIPT_URL 삭제됨 ---
 
 // --- 타입 정의 ---
 interface RecordData {
@@ -20,7 +24,8 @@ interface RecordData {
   exchange_rate: number;
   base_amount: number;
   linked_buy_id?: string | null;
-  pl?: number; // 매도 시 계산된 손익 (원화)
+  pl?: number; 
+  fee?: number; // ✅ [추가] 파이어베이스용 수수료 속성
 }
 
 interface AnalyticsData {
@@ -33,41 +38,79 @@ interface AnalyticsData {
     daily: { SW: number; HR: number };
     monthly: { SW: number; HR: number };
   };
-  soldBuyIds: string[]; // 매도 완료된 매수 ID 목록
-}
-
-interface ApiResponse {
-  status: string;
-  records: RecordData[];
-  analytics: AnalyticsData;
-  totalRecords: number;
-  allRecordsForFilter?: RecordData[]; // 전체 데이터 (필터링용)
+  soldBuyIds: string[];
 }
 
 interface FormDataState {
-  id: string | null; // 수정 모드 식별용
+  id: string | null;
   trader: string;
-  type: 'buy' | 'sell';
+  type: 'buy' | 'sell' | ''; // 사용자가 빈 값도 허용하도록 수정했던 부분 유지
   currency: string;
   date: string;
   foreignAmount: string;
   exchangeRate: string;
   baseAmount: string;
   linkedBuyId: string;
-  fee: string; // [추가] 수수료 입력 필드
+  fee: string;
 }
 
+// ✅ [추가] 구글 서버가 하던 '통계 연산'을 내 기기에서 빛의 속도로 처리하는 함수
+const calculateAnalytics = (records: RecordData[]): AnalyticsData => {
+  let totalPL = 0;
+  let currentMonthPL = 0;
+  const monthlyPL: Record<string, number> = {};
+  const holdings: Record<string, number> = {};
+  const buyStats: Record<string, { amt: number; cost: number }> = {};
+  const soldBuyIds: string[] = [];
+  const limitUsage = { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } };
+
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const buyRecordMap = new Map(records.filter(r => r.type === 'buy').map(r => [r.id, r]));
+
+  // 실현 손익 및 매도된 매수 건 추적
+  records.filter(r => r.type === 'sell' && r.linked_buy_id).forEach(sellRecord => {
+    if (sellRecord.linked_buy_id) {
+      soldBuyIds.push(sellRecord.linked_buy_id);
+      const originalBuy = buyRecordMap.get(sellRecord.linked_buy_id);
+      if (originalBuy) {
+        const profit = sellRecord.base_amount - originalBuy.base_amount;
+        totalPL += profit;
+        const sellMonth = sellRecord.timestamp.substring(0, 7);
+        monthlyPL[sellMonth] = (monthlyPL[sellMonth] || 0) + profit;
+        if (sellMonth === currentYearMonth) currentMonthPL += profit;
+      }
+    }
+  });
+
+  // 보유 외화 및 평단가 계산
+  const unsoldBuys = records.filter(r => r.type === 'buy' && !soldBuyIds.includes(r.id));
+  unsoldBuys.forEach(r => {
+    const curr = r.target_currency;
+    holdings[curr] = (holdings[curr] || 0) + r.foreign_amount;
+    if (!buyStats[curr]) buyStats[curr] = { amt: 0, cost: 0 };
+    buyStats[curr].amt += r.foreign_amount;
+    buyStats[curr].cost += r.base_amount;
+  });
+
+  const avgBuyPrices: Record<string, number> = {};
+  for (const curr in buyStats) {
+    let avg = buyStats[curr].cost / buyStats[curr].amt;
+    if (curr === 'JPY') avg *= 100;
+    avgBuyPrices[curr] = avg;
+  }
+
+  return { totalPL, currentMonthPL, monthlyPL, holdings, avgBuyPrices, limitUsage, soldBuyIds };
+};
+
+
 function App() {
-  const [allRecords, setAllRecords] = useState<RecordData[]>([]); // 페이지네이션 없는 전체 데이터
-  const [records, setRecords] = useState<RecordData[]>([]); // 현재 페이지 데이터
+  const [allRecords, setAllRecords] = useState<RecordData[]>([]); 
+  const [records, setRecords] = useState<RecordData[]>([]); 
   const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalPL: 0,
-    currentMonthPL: 0,
-    monthlyPL: {},
-    holdings: {},
-    avgBuyPrices: {},
-    limitUsage: { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } },
-    soldBuyIds: []
+    totalPL: 0, currentMonthPL: 0, monthlyPL: {}, holdings: {}, avgBuyPrices: {},
+    limitUsage: { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } }, soldBuyIds: []
   });
   
   const [loading, setLoading] = useState<boolean>(false);
@@ -78,101 +121,74 @@ function App() {
   const [formData, setFormData] = useState<FormDataState>({
     id: null,
     trader: '',
-    type: 'buy',
-    currency: 'USD',
+    type: 'buy', // 사용자님 코드 유지
+    currency: 'USD', // 사용자님 코드 유지
     date: new Date().toISOString().substring(0, 10),
     foreignAmount: '',
     exchangeRate: '',
     baseAmount: '',
     linkedBuyId: '',
-    fee: '' // [추가] 수수료 초기값
+    fee: '' 
   });
 
-  // --- 데이터 불러오기 ---
+  // --- 🚀 데이터 불러오기 (Firebase Firestore) ---
   const fetchRecords = async (page: number = 1) => {
-    if (!SCRIPT_URL || SCRIPT_URL.includes("여기에")) {
-      alert("App.tsx 파일에서 SCRIPT_URL을 먼저 설정해주세요!");
-      return;
-    }
     const hasCache = localStorage.getItem('cached_records');
     if (!hasCache) setLoading(true);
     
     try {
-      const response = await fetch(`${SCRIPT_URL}?page=${page}&limit=50`);
-      const data: ApiResponse = await response.json();
+      // 파이어베이스에서 시간 역순으로 전체 데이터 가져오기
+      const q = query(collection(db, 'records'), orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(q);
       
-      if (data.records) {
-        setRecords(data.records);
-        setAnalytics(data.analytics);
-        setTotalPages(Math.ceil(data.totalRecords / 50));
-        setCurrentPage(page);
-        
-        const allRecs = data.allRecordsForFilter || data.records;
-        setAllRecords(allRecs);
+      const fetchedData: RecordData[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as RecordData[];
 
-        // ✅ [추가] 다음번 접속을 위해 폰 저장소(캐시)에 최신 데이터 구워놓기
-        localStorage.setItem('cached_records', JSON.stringify(data.records));
-        localStorage.setItem('cached_analytics', JSON.stringify(data.analytics));
-        localStorage.setItem('cached_allRecords', JSON.stringify(allRecs));
-      }
+      // 프론트엔드 연산기로 통계 도출
+      const newAnalytics = calculateAnalytics(fetchedData);
+      
+      // 페이지네이션 처리 (클라이언트)
+      const limit = 50;
+      const offset = (page - 1) * limit;
+      const paginatedData = fetchedData.slice(offset, offset + limit);
+      
+      setAllRecords(fetchedData);
+      setRecords(paginatedData);
+      setAnalytics(newAnalytics);
+      setTotalPages(Math.ceil(fetchedData.length / limit) || 1);
+      setCurrentPage(page);
+      
+      // 초고속 로딩을 위한 캐시 저장 (기존 기능 유지)
+      localStorage.setItem('cached_records', JSON.stringify(paginatedData));
+      localStorage.setItem('cached_analytics', JSON.stringify(newAnalytics));
+      localStorage.setItem('cached_allRecords', JSON.stringify(fetchedData));
+      
     } catch (error) {
       console.error("데이터 로드 실패:", error);
+      alert("데이터를 불러오지 못했습니다.");
     } finally {
-      setLoading(false); // 작업이 끝나면 무조건 로딩창 끄기
-    };
-  
-
-    setLoading(true);
-    try {
-      // 페이지네이션과 필터링을 서버에서 처리하거나, 전체를 받아와서 클라이언트에서 처리
-      // 기존 main.js 방식대로 전체 데이터를 받아 처리하는 구조로 가정
-      const response = await fetch(`${SCRIPT_URL}?page=${page}&limit=50`);
-      const data: ApiResponse = await response.json();
-      
-      if (data.records) {
-        setRecords(data.records);
-        setAnalytics(data.analytics);
-        setTotalPages(Math.ceil(data.totalRecords / 50));
-        setCurrentPage(page);
-        
-        // 전체 기록 저장 (계산기나 드롭다운 필터용)
-        if (data.allRecordsForFilter) {
-            setAllRecords(data.allRecordsForFilter);
-        } else {
-            // API가 allRecordsForFilter를 안 주면 현재 페이지 데이터라도 씀
-            setAllRecords(data.records); 
-        }
-      }
-    } catch (error) {
-      console.error("데이터 로드 실패:", error);
-    } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   };
 
-  useEffect(() => { fetchRecords(1); }, []);
-  // ✅ [추가] 입력값, 통화, 타입이 바뀔 때마다 '원화 환산'을 자동 계산하는 로직
-  // ✅ [수정] 앱이 처음 켜질 때 실행되는 마법
+  // 앱이 처음 켜질 때 실행되는 마법 (기존 캐싱 로직 유지)
   useEffect(() => {
-    // 1. 폰에 저장해둔 데이터가 있는지 확인
     const cachedRecords = localStorage.getItem('cached_records');
     const cachedAnalytics = localStorage.getItem('cached_analytics');
     const cachedAll = localStorage.getItem('cached_allRecords');
 
-    // 2. 있다면 서버 응답을 기다리지 않고 화면에 즉시 0.1초 만에 뿌림!
     if (cachedRecords && cachedAnalytics && cachedAll) {
       setRecords(JSON.parse(cachedRecords));
       setAnalytics(JSON.parse(cachedAnalytics));
       setAllRecords(JSON.parse(cachedAll));
     }
-
-    // 3. 화면을 띄워놓은 상태로, 백그라운드에서 최신 데이터를 가져옴
     fetchRecords(1); 
   }, []);
 
-  // ✅ [추가] BTC를 제외한 한도 사용량 프론트엔드 직접 계산
+  // BTC를 제외한 한도 사용량 프론트엔드 직접 계산 (기존 로직 유지)
   const calculatedLimitUsage = useMemo(() => {
-    // 로컬 시간 기준 오늘 날짜와 이번 달 문자열 만들기 (예: "2024-11-02", "2024-11")
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -181,72 +197,44 @@ function App() {
     const todayStr = `${year}-${month}-${day}`;
     const currentMonthStr = `${year}-${month}`;
 
-    const usage = {
-      daily: { SW: 0, HR: 0 },
-      monthly: { SW: 0, HR: 0 }
-    };
+    const usage = { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } };
 
     allRecords.forEach(record => {
-      // [핵심 조건] 매수(buy) 건이면서, 통화가 'BTC'가 아닐 때만 계산에 포함!
       if (record.type === 'buy' && record.target_currency !== 'BTC') {
         const recordDate = record.timestamp.substring(0, 10);
         const recordMonth = record.timestamp.substring(0, 7);
         const trader = record.trader as 'SW' | 'HR';
 
-        // 일일 한도 누적
-        if (usage.daily[trader] !== undefined && recordDate === todayStr) {
-          usage.daily[trader] += record.base_amount;
-        }
-        // 월간 한도 누적
-        if (usage.monthly[trader] !== undefined && recordMonth === currentMonthStr) {
-          usage.monthly[trader] += record.base_amount;
-        }
+        if (usage.daily[trader] !== undefined && recordDate === todayStr) usage.daily[trader] += record.base_amount;
+        if (usage.monthly[trader] !== undefined && recordMonth === currentMonthStr) usage.monthly[trader] += record.base_amount;
       }
     });
-
     return usage;
   }, [allRecords]);
 
-  // ✅ 사라졌던 '원화 환산' 자동 계산 로직 복구!
+  // '원화 환산' 자동 계산 로직 (기존 로직 유지)
   useEffect(() => {
     const amt = parseFloat(formData.foreignAmount || '0');
     const rate = parseFloat(formData.exchangeRate || '0');
-    const feeAmt = parseFloat(formData.fee || '0'); // 수수료 파싱
+    const feeAmt = parseFloat(formData.fee || '0'); 
 
     if (!isNaN(amt) && !isNaN(rate)) {
       let calc = amt * rate;
-
       if (formData.currency === 'BTC') {
-        // BTC일 경우: 매수면 수수료 더하고, 매도면 수수료 뺌
         calc = formData.type === 'buy' ? calc + feeAmt : calc - feeAmt;
       } else if (formData.currency === 'JPY') {
-        // JPY일 경우: 100엔 기준
         calc /= 100;
       }
-
       const newBaseAmount = Math.round(calc).toString();
-
-      // 무한 루프 방지를 위해 값이 다를 때만 폼 데이터 업데이트
-      if (formData.baseAmount !== newBaseAmount) {
-        setFormData(prev => ({ ...prev, baseAmount: newBaseAmount }));
-      }
+      if (formData.baseAmount !== newBaseAmount) setFormData(prev => ({ ...prev, baseAmount: newBaseAmount }));
     } else if (formData.baseAmount !== '') {
-      // 숫자가 비워지면 결과도 비움
       setFormData(prev => ({ ...prev, baseAmount: '' }));
     }
-  }, [
-    formData.foreignAmount, 
-    formData.exchangeRate, 
-    formData.fee, 
-    formData.currency, 
-    formData.type // 이 값들 중 하나라도 바뀌면 위 로직이 자동 실행됨
-  ]);
+  }, [formData.foreignAmount, formData.exchangeRate, formData.fee, formData.currency, formData.type]);
 
-  // --- 헬퍼 로직 ---
-  // 매도 가능한(아직 안 팔린) 매수 기록 찾기
+  // 매도 가능한 매수 기록 찾기
   const availableBuyOptions = useMemo(() => {
     if (formData.type !== 'sell' || !formData.trader) return [];
-    
     return allRecords.filter(r => 
         r.type === 'buy' && 
         r.trader === formData.trader && 
@@ -256,33 +244,26 @@ function App() {
   }, [allRecords, formData.type, formData.trader, formData.currency, analytics.soldBuyIds]);
 
   // 입력 핸들러
-  // [수정된 입력 핸들러]
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
     let finalValue = value;
     
-    // ✅ [수정] 배열에 'fee' 추가!
     if (['foreignAmount', 'exchangeRate', 'baseAmount', 'fee'].includes(name)) {
        finalValue = value.replace(/,/g, ''); 
-       
        if (finalValue !== '' && finalValue !== '.' && isNaN(Number(finalValue))) return; 
     }
 
     setFormData(prev => {
       const updated = { ...prev, [name]: finalValue };
-      
       if (name === 'linkedBuyId' && value) {
         const selectedBuy = allRecords.find(r => r.id.toString() === value);
-        if (selectedBuy) {
-            updated.foreignAmount = selectedBuy.foreign_amount.toString();
-        }
+        if (selectedBuy) updated.foreignAmount = selectedBuy.foreign_amount.toString();
       }
       return updated;
     });
   };
 
-  // 저장 (Create / Update)
+  // --- 🚀 저장 (Firebase Create / Update) ---
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.trader) return alert('거래자를 선택해주세요.');
@@ -290,29 +271,31 @@ function App() {
     
     setLoading(true);
     const isUpdate = !!formData.id;
-    const action = isUpdate ? 'update' : 'create';
-    const payloadId = isUpdate ? formData.id : 't' + Date.now();
 
+    // 파이어베이스에 보낼 데이터 포장
     const payload = {
-      action: action,
-      data: {
-        id: payloadId,
-        trader: formData.trader,
-        type: formData.type,
-        target_currency: formData.currency,
-        timestamp: new Date(formData.date).toISOString(), 
-        foreign_amount: parseFloat(formData.foreignAmount),
-        exchange_rate: parseFloat(formData.exchangeRate),
-        base_amount: parseInt(formData.baseAmount, 10),
-        linked_buy_id: formData.type === 'sell' ? formData.linkedBuyId : null
-      }
+      trader: formData.trader,
+      type: formData.type,
+      target_currency: formData.currency,
+      timestamp: formData.date + "T00:00:00Z", // 날짜 포맷팅
+      foreign_amount: parseFloat(formData.foreignAmount),
+      exchange_rate: parseFloat(formData.exchangeRate),
+      base_amount: parseInt(formData.baseAmount, 10),
+      linked_buy_id: formData.type === 'sell' ? formData.linkedBuyId : null,
+      fee: parseFloat(formData.fee || '0')
     };
 
     try {
-      await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-      alert(isUpdate ? '수정되었습니다!' : '저장되었습니다!');
-      fetchRecords(currentPage); // 목록 새로고침
-      // 폼 초기화
+      if (isUpdate && formData.id) {
+        // 기존 문서 수정
+        await updateDoc(doc(db, 'records', formData.id), payload);
+        alert('수정되었습니다!');
+      } else {
+        // 새 문서 추가
+        await addDoc(collection(db, 'records'), payload);
+        alert('저장되었습니다!');
+      }
+      fetchRecords(currentPage); 
       setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' });
     } catch (error) {
       alert('작업 실패: ' + String(error));
@@ -321,15 +304,12 @@ function App() {
     }
   };
 
-  // 삭제 핸들러
+  // --- 🚀 삭제 (Firebase Delete) ---
   const handleDelete = async (id: string) => {
     if(!confirm("정말 삭제하시겠습니까?")) return;
     setLoading(true);
     try {
-        await fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete', id: id })
-        });
+        await deleteDoc(doc(db, 'records', id));
         alert("삭제되었습니다.");
         fetchRecords(currentPage);
     } catch(e) {
@@ -339,7 +319,6 @@ function App() {
     }
   };
 
-  // 수정 버튼 클릭 시 폼 채우기
   const handleEdit = (record: RecordData) => {
     if (record.type === 'sell') {
         alert("매도 기록은 데이터 꼬임 방지를 위해 삭제 후 다시 입력해주세요.");
@@ -355,25 +334,20 @@ function App() {
         exchangeRate: record.exchange_rate.toString(),
         baseAmount: record.base_amount.toString(),
         linkedBuyId: record.linked_buy_id || '',
-        fee: '' // [추가] 수수료는 수정 시 기본값으로 빈 문자열 설정
+        fee: record.fee ? record.fee.toString() : ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const formatDisplayValue = (value: string | number) => {
       if (value === null || value === undefined || value === '') return '';
-      const strVal = String(value).replace(/,/g, ''); // 기존 콤마 제거
-      
-      if (strVal === '.') return '.'; // 처음에 점(.)만 찍은 경우 허용
-
+      const strVal = String(value).replace(/,/g, ''); 
+      if (strVal === '.') return '.'; 
       const parts = strVal.split('.');
-      parts[0] = Number(parts[0]).toLocaleString(); // 정수부 콤마 처리
-      
-      // 소수점이 있으면 뒤에 그대로 붙여줌
+      parts[0] = Number(parts[0]).toLocaleString(); 
       return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
-    };
+  };
 
-  // 필터링된 목록
   const displayedRecords = filterTrader === 'all' 
     ? records 
     : records.filter(r => r.trader === filterTrader);
@@ -387,7 +361,6 @@ function App() {
       </header>
 
       <main>
-        {/* 계산기 컴포넌트 추가 */}
         <Calculator records={allRecords} soldBuyIds={analytics.soldBuyIds} />
 
         <section className="dashboard-section">
@@ -412,7 +385,6 @@ function App() {
           </div>
         </section>
 
-        {/* 한도 현황 컴포넌트 추가 */}
         <LimitStatus limitUsage={calculatedLimitUsage} />
         <Suspense>
           <MonthlyChart monthlyData={analytics.monthlyPL} />
@@ -478,7 +450,7 @@ function App() {
                    <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
                 </div>
               </div>
-              {/* ✅ [추가] BTC를 선택했을 때만 마법처럼 나타나는 수수료 입력란! */}
+              
               {formData.currency === 'BTC' && (
                   <div className="form-group" style={{ marginTop: '-10px', marginBottom: '15px' }}>
                      <label style={{ color: '#e67e22', fontWeight: 'bold' }}>수수료 (원화)</label>
@@ -488,7 +460,7 @@ function App() {
                        value={formatDisplayValue(formData.fee)} 
                        onChange={handleInputChange} 
                        placeholder="예: 5000" 
-                       style={{ borderColor: '#e67e22' }} /* 눈에 띄게 주황색 테두리 */
+                       style={{ borderColor: '#e67e22' }} 
                      />
                   </div>
               )}    
@@ -503,7 +475,6 @@ function App() {
           </form>
         </section>
 
-        {/* --- 기존 list-section 안의 table-container 부분을 이걸로 교체하세요 --- */}
         <section className="list-section">
           <h2>거래 히스토리</h2>
           <div className="filter-controls">
@@ -523,7 +494,7 @@ function App() {
                   <th>환율</th>
                   <th>원화금액</th>
                   <th>타입</th>
-                  <th>손익</th> {/* ✅ [추가] 손익 컬럼 */}
+                  <th>손익</th>
                   <th>관리</th>
                 </tr>
               </thead>
@@ -532,10 +503,9 @@ function App() {
                   const isCompleted = analytics.soldBuyIds.includes(record.id.toString()) || record.type === 'sell';
                   
                   let calculatedPL = record.pl; 
-                  let linkedBuy = null; // ✅ 짝꿍 매수 기록을 담을 바구니
+                  let linkedBuy = null; 
 
                   if (record.type === 'sell' && record.linked_buy_id) {
-                      // 전체 데이터에서 원본 매수 건을 찾습니다.
                       linkedBuy = allRecords.find(r => r.id.toString() === record.linked_buy_id);
                       if (calculatedPL === undefined && linkedBuy) {
                           calculatedPL = record.base_amount - linkedBuy.base_amount;
@@ -543,9 +513,7 @@ function App() {
                   }
 
                   return (
-                    /* ✅ 두 줄 이상을 반환할 때는 Fragment로 묶어줍니다 */
                     <Fragment key={record.id}>
-                      {/* 1. 기존 메인 거래 행 */}
                       <tr className={isCompleted ? 'record-completed' : ''}>
                         <td>{record.timestamp.substring(0, 10)}</td>
                         <td>{record.trader}</td>
@@ -566,8 +534,6 @@ function App() {
                             <button className="delete-btn" onClick={() => handleDelete(record.id)}>🗑️</button>
                         </td>
                       </tr>
-
-                      {/* 2. ✅ [추가] 짝꿍 매수 건이 있는 경우 바로 밑에 꼬리표 행 렌더링 */}
                       {record.type === 'sell' && linkedBuy && (
                         <tr className="linked-buy-row">
                           <td colSpan={3} className="link-arrow">
