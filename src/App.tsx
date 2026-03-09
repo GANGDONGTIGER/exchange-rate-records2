@@ -187,31 +187,51 @@ function App() {
     fetchRecords(1); 
   }, []);
 
-  // BTC를 제외한 한도 사용량 프론트엔드 직접 계산 (기존 로직 유지)
+  // ✅ [수정] BTC와 주식을 제외한 한도 사용량 프론트엔드 직접 계산 (아침 9시 기준 적용!)
   const calculatedLimitUsage = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    const todayStr = `${year}-${month}-${day}`;
-    const currentMonthStr = `${year}-${month}`;
-
     const usage = { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } };
+    const now = new Date();
+
+    // --- 1. 일일 한도 기준시간 계산 (아침 9시 ~ 다음날 아침 9시) ---
+    const dailyLimitStart = new Date(now);
+    if (now.getHours() < 9) { 
+      // 현재 시간이 아침 9시 이전이면, 시작일은 '어제' 아침 9시
+      dailyLimitStart.setDate(dailyLimitStart.getDate() - 1); 
+    }
+    dailyLimitStart.setHours(9, 0, 0, 0); // 09:00:00.000 세팅
+    
+    const dailyLimitEnd = new Date(dailyLimitStart);
+    dailyLimitEnd.setDate(dailyLimitEnd.getDate() + 1); // 종료일은 시작일로부터 정확히 24시간 뒤
+
+    // --- 2. 월간 한도 기준시간 계산 (매월 1일 아침 9시 ~ 다음달 1일 아침 9시) ---
+    const monthlyLimitStart = new Date(now.getFullYear(), now.getMonth(), 1, 9, 0, 0);
+    if (now.getDate() === 1 && now.getHours() < 9) { 
+      monthlyLimitStart.setMonth(monthlyLimitStart.getMonth() - 1); 
+    }
+    const monthlyLimitEnd = new Date(monthlyLimitStart);
+    monthlyLimitEnd.setMonth(monthlyLimitEnd.getMonth() + 1);
 
     allRecords.forEach(record => {
-      if (record.type === 'buy' && record.target_currency !== 'BTC') {
-        const recordDate = record.timestamp.substring(0, 10);
-        const recordMonth = record.timestamp.substring(0, 7);
+      // ✅ [버그 수정] 'BTC'와 '주식' 모두 한도 계산에서 완벽하게 제외!
+      if (record.type === 'buy' && record.target_currency !== 'BTC' && record.target_currency !== '주식') {
+        
+        // 파이어베이스에 저장된 정확한 시간(ISO)을 다시 Date 객체로 변환
+        const recordDate = new Date(record.timestamp);
         const trader = record.trader as 'SW' | 'HR';
 
-        if (usage.daily[trader] !== undefined && recordDate === todayStr) usage.daily[trader] += record.base_amount;
-        if (usage.monthly[trader] !== undefined && recordMonth === currentMonthStr) usage.monthly[trader] += record.base_amount;
+        // 일일 한도 누적 (아침 9시 ~ 다음날 아침 9시 사이인지 깐깐하게 체크)
+        if (usage.daily[trader] !== undefined && recordDate >= dailyLimitStart && recordDate < dailyLimitEnd) {
+           usage.daily[trader] += record.base_amount;
+        }
+        // 월간 한도 누적
+        if (usage.monthly[trader] !== undefined && recordDate >= monthlyLimitStart && recordDate < monthlyLimitEnd) {
+           usage.monthly[trader] += record.base_amount;
+        }
       }
     });
+
     return usage;
   }, [allRecords]);
-
   // '원화 환산' 자동 계산 로직 (기존 로직 유지)
   useEffect(() => {
     if (formData.currency === '주식') return;
