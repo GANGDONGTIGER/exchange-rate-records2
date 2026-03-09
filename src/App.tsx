@@ -539,7 +539,8 @@ function App() {
                         <td>{record.timestamp.substring(0, 10)}</td>
                         <td>{record.trader}</td>
                         <td>{record.target_currency}</td>
-                        <td className="record-foreign-amount">{Number(record.foreign_amount).toLocaleString()}</td>
+                        <td className="record-foreign-amount">
+                          {record.target_currency === 'BTC' ? record.foreign_amount : Number(record.foreign_amount).toLocaleString()}</td>
                         <td className="record-rate">{Number(record.exchange_rate).toLocaleString()}</td>
                         <td className="record-base-amount">{Math.round(record.base_amount).toLocaleString()}</td>
                         <td style={{ color: record.type === 'buy' ? '#3498db' : '#e74c3c', fontWeight: 'bold' }}>
@@ -561,7 +562,7 @@ function App() {
                             ↳ 매수 원본
                           </td>
                           <td colSpan={6} className="linked-buy-details">
-                            {linkedBuy.timestamp.substring(0, 10)} | 금액: {Number(linkedBuy.foreign_amount).toLocaleString()} {linkedBuy.target_currency} | 환율: {Number(linkedBuy.exchange_rate).toLocaleString()} | 원화: {Math.round(linkedBuy.base_amount).toLocaleString()}원
+                            {linkedBuy.timestamp.substring(0, 10)} | 금액: {linkedBuy.target_currency === 'BTC' ? linkedBuy.foreign_amount : Number(linkedBuy.foreign_amount).toLocaleString()} {linkedBuy.target_currency} | 환율: {Number(linkedBuy.exchange_rate).toLocaleString()} | 원화: {Math.round(linkedBuy.base_amount).toLocaleString()}원
                           </td>
                         </tr>
                       )}
