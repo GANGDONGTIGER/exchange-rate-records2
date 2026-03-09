@@ -214,6 +214,7 @@ function App() {
 
   // '원화 환산' 자동 계산 로직 (기존 로직 유지)
   useEffect(() => {
+    if (formData.currency === '주식') return;
     const amt = parseFloat(formData.foreignAmount || '0');
     const rate = parseFloat(formData.exchangeRate || '0');
     const feeAmt = parseFloat(formData.fee || '0'); 
@@ -288,11 +289,12 @@ function App() {
       type: formData.type,
       target_currency: formData.currency,
       timestamp: fixedTimestamp,
-      foreign_amount: parseFloat(formData.foreignAmount),
-      exchange_rate: parseFloat(formData.exchangeRate),
-      base_amount: parseInt(formData.baseAmount, 10),
+      // ✅ [수정] 주식일 때는 외화, 환율, 수수료를 무조건 0으로 꽂아줍니다. base_amount만 중요!
+      foreign_amount: formData.currency === '주식' ? 0 : parseFloat(formData.foreignAmount || '0'),
+      exchange_rate: formData.currency === '주식' ? 0 : parseFloat(formData.exchangeRate || '0'),
+      base_amount: parseInt(formData.baseAmount || '0', 10),
       linked_buy_id: formData.type === 'sell' ? formData.linkedBuyId : null,
-      fee: parseFloat(formData.fee || '0')
+      fee: formData.currency === '주식' ? 0 : parseFloat(formData.fee || '0')
     };
 
     try {
@@ -415,9 +417,9 @@ function App() {
               </div>
 
               <div className="form-group">
-                <label>거래 통화</label>
+                <label>거래 종목</label>
                 <div className="button-group">
-                  {['USD', 'JPY', 'EUR', 'CAD', 'AUD', 'NZD', 'HKD', 'SGD', 'BTC'].map(c => (
+                  {['USD', 'JPY', 'EUR', 'CAD', 'AUD', 'NZD', 'HKD', 'SGD', 'BTC', '주식'].map(c => (
                     <button key={c} type="button" className={`btn-currency ${formData.currency === c ? 'active' : ''}`} onClick={() => setFormData({...formData, currency: c})}>{c}</button>
                   ))}
                 </div>
@@ -426,8 +428,8 @@ function App() {
               <div className="form-group">
                 <label>거래 종류</label>
                 <div className="button-group">
-                    <button type="button" className={`btn-type ${formData.type === 'buy' ? 'active' : ''}`} onClick={() => setFormData({...formData, type: 'buy', linkedBuyId: ''})}>외화 매수</button>
-                    <button type="button" className={`btn-type ${formData.type === 'sell' ? 'active' : ''}`} onClick={() => setFormData({...formData, type: 'sell'})}>외화 매도</button>
+                    <button type="button" className={`btn-type ${formData.type === 'buy' ? 'active' : ''}`} onClick={() => setFormData({...formData, type: 'buy', linkedBuyId: ''})}>매수</button>
+                    <button type="button" className={`btn-type ${formData.type === 'sell' ? 'active' : ''}`} onClick={() => setFormData({...formData, type: 'sell'})}>매도</button>
                 </div>
               </div>
 
@@ -450,35 +452,44 @@ function App() {
                  <input type="date" name="date" value={formData.date} onChange={handleInputChange} />
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                   <label>금액 (외화)</label>
-                   <input type="text" name="foreignAmount" value={formatDisplayValue(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
-                </div>
-                <div className="form-group">
-                   <label>환율</label>
-                   <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
-                </div>
-              </div>
-              
-              {formData.currency === 'BTC' && (
-                  <div className="form-group" style={{ marginTop: '-10px', marginBottom: '15px' }}>
-                     <label style={{ color: '#e67e22', fontWeight: 'bold' }}>수수료 (원화)</label>
-                     <input 
-                       type="text" 
-                       name="fee" 
-                       value={formatDisplayValue(formData.fee)} 
-                       onChange={handleInputChange} 
-                       placeholder="예: 5000" 
-                       style={{ borderColor: '#e67e22' }} 
-                     />
+              {formData.currency !== '주식' ? (
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                       <label>금액 (외화)</label>
+                       <input type="text" name="foreignAmount" value={formatDisplayValue(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
+                    </div>
+                    <div className="form-group">
+                       <label>환율</label>
+                       <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
+                    </div>
                   </div>
-              )}    
-               <div className="form-group">
-                   <label>원화 환산</label>
-                   <input type="text" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
+                  
+                  {formData.currency === 'BTC' && (
+                      <div className="form-group" style={{ marginTop: '-10px', marginBottom: '15px' }}>
+                         <label style={{ color: '#e67e22', fontWeight: 'bold' }}>수수료 (원화)</label>
+                         <input type="text" name="fee" value={formatDisplayValue(formData.fee)} onChange={handleInputChange} placeholder="예: 5000" style={{ borderColor: '#e67e22' }} />
+                      </div>
+                  )}    
+                   <div className="form-group">
+                       <label>원화 환산</label>
+                       <input type="text" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
+                    </div>
+                </>
+                ) : (
+                /* ✅ [추가] 통화가 '주식'일 때만 노출되는 단일 입력창! */
+                <div className="form-group">
+                   <label style={{ color: '#8e44ad', fontWeight: 'bold' }}>거래 금액</label>
+                   <input 
+                     type="text" 
+                     name="baseAmount" 
+                     value={formatDisplayValue(formData.baseAmount)} 
+                     onChange={handleInputChange} 
+                     placeholder="예: 1000000" 
+                     style={{ borderColor: '#8e44ad' }} 
+                   />
                 </div>
-
+              )}
               <button type="submit">{formData.id ? '수정 완료' : '저장하기'}</button>
               {formData.id && <button type="button" onClick={() => setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' })} style={{ marginTop: '10px', background: '#95a5a6' }}>취소</button>}
             </fieldset>
