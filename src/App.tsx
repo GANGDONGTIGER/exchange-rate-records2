@@ -11,6 +11,8 @@ const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 import LimitStatus from './components/LimitStatus';
 import Calculator from './components/Calculator';
 
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
 // --- ❌ 기존 GAS SCRIPT_URL 삭제됨 ---
 
 // --- 타입 정의 ---
@@ -384,6 +386,44 @@ function App() {
     ? records 
     : records.filter(r => r.trader === filterTrader);
 
+
+  // ------------------------------------------------------------------
+  // 📈 [신규] 통화별 환율 매수 건수 차트 로직
+  // ------------------------------------------------------------------
+  // 1. 콤보박스에서 선택한 통화를 기억할 상태
+  const [selectedChartCurrency, setSelectedChartCurrency] = useState<string>('');
+
+  // 2. 선택된 통화에 맞춰 차트 데이터를 가공
+  const chartData = useMemo(() => {
+    // 선택된 통화가 없으면 빈 배열 반환
+    if (!selectedChartCurrency) return [];
+
+    const counts: { [key: number]: number } = {};
+
+    allRecords.forEach(record => {
+      // '매수' 이면서 콤보박스에서 '선택한 통화'와 일치하는 것만 쏙쏙 뽑기
+      if (record.type === 'buy' && record.target_currency === selectedChartCurrency) {
+        
+        // 원단위 미만 절사 (예: 930.45 -> 930)
+        const rateLevel = Math.floor(record.exchange_rate);
+        
+        // 해당 환율대에 기존 카운트가 있으면 +1, 없으면 1로 시작
+        counts[rateLevel] = (counts[rateLevel] || 0) + 1;
+      }
+    });
+
+    // 객체 형태의 데이터를 차트가 좋아하는 배열 형태로 변환하고, 환율순으로 오름차순 정렬
+    return Object.keys(counts)
+      .map(key => ({
+        rateLabel: `${Number(key).toLocaleString()}원`, // X축에 보여줄 예쁜 글자
+        rateValue: Number(key),                         // 정렬을 위한 실제 숫자
+        count: counts[Number(key)]                      // Y축에 올라갈 거래 건수 막대 높이
+      }))
+      .sort((a, b) => a.rateValue - b.rateValue);
+      
+  }, [allRecords, selectedChartCurrency]);
+  // ------------------------------------------------------------------
+
   return (
     <div id="app">
       {loading && <div id="loading-overlay"><div className="spinner"></div></div>}
@@ -515,6 +555,55 @@ function App() {
             </fieldset>
           </form>
         </section>
+        
+      {/* ------------------------------------------------------------------ */}
+      {/* 📈 환율별 매수 타점 분석 차트 영역 */}
+      {/* ------------------------------------------------------------------ */}
+      <section style={{ marginTop: '30px', padding: '20px', backgroundColor: '#fff', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0 }}>📊 금액대별 매수 건수 분석</h2>
+          
+          {/* 통화 선택 콤보박스 */}
+          <select
+            value={selectedChartCurrency}
+            onChange={(e) => setSelectedChartCurrency(e.target.value)}
+            style={{ padding: '8px 15px', fontSize: '15px', borderRadius: '5px', border: '1px solid #ccc', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="">통화 선택 (미선택)</option>
+            {['USD', 'JPY', 'EUR', 'CAD', 'AUD', 'NZD', 'HKD', 'SGD', 'BTC', '주식'].map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 차트 그려주는 부분 (통화가 선택되었을 때만 노출) */}
+        {selectedChartCurrency && chartData.length > 0 ? (
+          <div style={{ width: '100%', height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
+                {/* 배경 점선 */}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                {/* X축 (환율) */}
+                <XAxis dataKey="rateLabel" tick={{ fontSize: 12, fill: '#666' }} />
+                {/* Y축 (건수) - 정수만 나오도록 allowDecimals=false */}
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#666' }} />
+                {/* 마우스 올렸을 때 뜨는 정보창 */}
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                  formatter={(value) => [`${value}건`, '매수']}
+                />
+                {/* 실제 세로 막대기 */}
+                <Bar dataKey="count" fill="#8e44ad" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : selectedChartCurrency ? (
+          <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>해당 통화의 매수 기록이 없습니다.</p>
+        ) : (
+          <p style={{ textAlign: 'center', color: '#999', padding: '40px 0' }}>위 콤보박스에서 통화를 선택하시면 분석 차트가 표시됩니다.</p>
+        )}
+      </section>
+      {/* ------------------------------------------------------------------ */}
 
         <section className="list-section">
           <h2>거래 히스토리</h2>
