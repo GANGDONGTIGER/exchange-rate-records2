@@ -561,7 +561,7 @@ function App() {
       {/* ------------------------------------------------------------------ */}
       <section style={{ marginTop: '30px', padding: '20px', backgroundColor: '#fff', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0 }}>📊 금액대별 매수 건수 분석</h2>
+          <h2 style={{ margin: 0 }}>📊 매수거래건</h2>
           
           {/* 통화 선택 콤보박스 */}
           <select
