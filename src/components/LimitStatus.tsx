@@ -27,7 +27,7 @@ const LimitStatus: React.FC<LimitStatusProps> = ({ limitUsage }) => {
             }}
           ></div>
         </div>
-        <span className="tracker-remaining">
+        <span className="tracker-remaining" style={{ minWidth: '110px', textAlign: 'right', display: 'inline-block' }}>
           잔여: {remaining.toLocaleString()}원
         </span>
       </div>
