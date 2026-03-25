@@ -120,12 +120,22 @@ function App() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [filterTrader, setFilterTrader] = useState<string>('all');
 
+// ✅ [추가] 영국 시간이 아닌, 내 기기의 '정확한 로컬(한국) 날짜'를 뽑아내는 함수
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState<FormDataState>({
     id: null,
     trader: '',
-    type: 'buy', // 사용자님 코드 유지
-    currency: 'USD', // 사용자님 코드 유지
-    date: new Date().toISOString().substring(0, 10),
+    type: 'buy',
+    currency: 'USD',
+    // ❌ 기존: new Date().toISOString().substring(0, 10),
+    date: getLocalDateString(), // ✅ [적용] 오늘 날짜를 정확하게 삽입!
     foreignAmount: '',
     exchangeRate: '',
     baseAmount: '',
@@ -330,7 +340,8 @@ function App() {
         alert('저장되었습니다!');
       }
       fetchRecords(currentPage); 
-      setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: new Date().toISOString().substring(0, 10), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' });
+      // ✅ [수정] 폼을 초기화할 때도 getLocalDateString()을 사용하도록 변경!
+      setFormData({ id: null, trader: '', type: 'buy', currency: 'USD', date: getLocalDateString(), foreignAmount: '', exchangeRate: '', baseAmount: '', linkedBuyId: '', fee: '' });
     } catch (error) {
       alert('작업 실패: ' + String(error));
     } finally {
