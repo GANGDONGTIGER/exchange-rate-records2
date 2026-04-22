@@ -312,7 +312,7 @@ function App() {
     const ss = String(now.getSeconds()).padStart(2, '0');
 
     // 사용자가 고른 달력 날짜에 현재 시간을 그냥 글자로 이어 붙여버립니다. (예: "2026-03-05T08:44:00.000Z")
-    const fixedTimestamp = `${formData.date}T${hh}:${mm}:${ss}.000Z`;
+    const fixedTimestamp = `${formData.date}T${hh}:${mm}:${ss}`;
 
 
     // 파이어베이스에 보낼 데이터 포장

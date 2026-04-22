@@ -16,9 +16,16 @@ const LimitStatus: React.FC<LimitStatusProps> = ({ limitUsage }) => {
     const remaining = max - current;
     
     return (
-      <div className="limit-tracker">
-        <span className="tracker-label">{colorClass}</span>
-        <div className="progress-bar-container">
+      // ✅ 부모에 display: flex 적용
+      <div className="limit-tracker" style={{ display: 'flex', alignItems: 'center', width: '100%', marginBottom: '10px' }}>
+        
+        {/* ✅ 라벨: 찌그러짐 방지 flexShrink: 0 */}
+        <span className="tracker-label" style={{ width: '30px', flexShrink: 0, fontWeight: 'bold' }}>
+          {colorClass}
+        </span>
+        
+        {/* ✅ 막대그래프: 남는 공간 전부 차지 flex: 1 */}
+        <div className="progress-bar-container" style={{ flex: 1, margin: '0 10px' }}>
           <div 
             className="progress-bar-fill" 
             style={{ 
@@ -27,7 +34,9 @@ const LimitStatus: React.FC<LimitStatusProps> = ({ limitUsage }) => {
             }}
           ></div>
         </div>
-        <span className="tracker-remaining" style={{ minWidth: '110px', textAlign: 'right', display: 'inline-block' }}>
+        
+        {/* ✅ 잔여 금액: 찌그러짐 방지 flexShrink: 0 */}
+        <span className="tracker-remaining" style={{ width: '110px', flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap', fontSize: '13px' }}>
           잔여: {remaining.toLocaleString()}원
         </span>
       </div>
