@@ -10,10 +10,9 @@ import { db } from './firebase';
 const MonthlyChart = lazy(() => import('./components/MonthlyChart'));
 import LimitStatus from './components/LimitStatus';
 import Calculator from './components/Calculator';
-
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import HoldingsStatus from './components/HoldingsStatus';
 
-// --- ❌ 기존 GAS SCRIPT_URL 삭제됨 ---
 
 // --- 타입 정의 ---
 interface RecordData {
@@ -462,6 +461,8 @@ function App() {
 
       <main>
         <Calculator records={allRecords} soldBuyIds={analytics.soldBuyIds} />
+
+        <HoldingsStatus records={allRecords} soldBuyIds={analytics.soldBuyIds} />
 
         <section className="dashboard-section">
           <h2>요약 정보</h2>
