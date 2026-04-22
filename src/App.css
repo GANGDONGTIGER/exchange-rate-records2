@@ -1,3 +1,18 @@
+/* CSS 파일 맨 윗줄에 폰트 불러오기 추가 */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+/* 전체 기본 폰트 및 배경색 변경 */
+body {
+  font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+  background-color: #f5f7fa; /* 눈이 편안한 아주 연한 회색 배경 */
+  color: #333333;
+}
+
+h1, h2, h3 {
+  font-weight: 700;
+  letter-spacing: -0.5px; /* 제목 자간을 살짝 좁혀주면 훨씬 세련돼 보입니다 */
+}
+
 /* =========================================
    1. 기본 초기화 및 글로벌 설정 (원본 유지)
    ========================================= */
@@ -565,4 +580,79 @@ button[type="submit"], button[type="button"] {
     padding-right: 0 !important;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7); /* 회색 배경으로 삐져나가도 잘 보이도록 그림자를 더 진하게 */
     overflow: visible !important; /* 글씨가 밖으로 나가도 안 잘리게 허용 */
+}
+
+/* 거래자, 통화, 매수/매도 선택 버튼 (알약 모양) */
+.button-group button {
+  background-color: #e9ecef;
+  color: #495057;
+  border-radius: 20px; /* 완전한 둥근 모서리 */
+  padding: 8px 18px;
+  margin: 4px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out; /* 애니메이션 효과 */
+}
+
+/* 마우스 올렸을 때 살짝 떠오르는 효과 */
+.button-group button:hover {
+  background-color: #dee2e6;
+  transform: translateY(-2px);
+}
+
+/* 선택(Active) 되었을 때의 강조 효과 */
+.button-group button.active {
+  background-color: #3498db;
+  color: white;
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4); /* 파란색 은은한 그림자 */
+  transform: translateY(-2px);
+}
+
+/* 각 구역(Section) 공통 스타일 */
+.dashboard-section, 
+.form-section fieldset, 
+.list-section, 
+.limit-dashboard-section, 
+.calculator-section {
+  background-color: #ffffff;
+  border: none;
+  border-radius: 16px; /* 둥근 모서리 */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); /* 아주 연한 그림자 */
+  padding: 25px;
+  margin-bottom: 25px;
+}
+
+/* 요약 정보 박스들 (총 실현 손익 등) */
+.dashboard-item {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #f1f3f5;
+  transition: transform 0.2s ease;
+}
+
+.dashboard-item:hover {
+  transform: translateY(-5px); /* 마우스 올리면 카드 전체가 위로 살짝 올라감 */
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+}
+
+input[type="text"], 
+input[type="date"], 
+select {
+  border: 1px solid #ced4da;
+  border-radius: 8px; /* 모서리 둥글게 */
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit; /* 입력창에도 폰트 적용 */
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 입력칸 클릭했을 때 예쁜 파란색 띠 생성 */
+input:focus, select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
