@@ -33,6 +33,7 @@ interface RecordData {
 interface AnalyticsData {
   totalPL: number;
   currentMonthPL: number;
+  todayPL: number;  //오늘 하루 손익합계
   monthlyPL: Record<string, number>;
   holdings: Record<string, number>;
   avgBuyPrices: Record<string, number>;
@@ -60,6 +61,7 @@ interface FormDataState {
 const calculateAnalytics = (records: RecordData[]): AnalyticsData => {
   let totalPL = 0;
   let currentMonthPL = 0;
+  let todayPL = 0; // ✅ 오늘 하루 손익합계 변수 추가
   const monthlyPL: Record<string, number> = {};
   const holdings: Record<string, number> = {};
   const buyStats: Record<string, { amt: number; cost: number }> = {};
@@ -67,7 +69,12 @@ const calculateAnalytics = (records: RecordData[]): AnalyticsData => {
   const limitUsage = { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } };
 
   const now = new Date();
-  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const currentDay = `${year}-${month}-${day}`;
+  const currentYearMonth = `${year}-${month}`;
+
 
   const buyRecordMap = new Map(records.filter(r => r.type === 'buy').map(r => [r.id, r]));
 
@@ -79,9 +86,13 @@ const calculateAnalytics = (records: RecordData[]): AnalyticsData => {
       if (originalBuy) {
         const profit = sellRecord.base_amount - originalBuy.base_amount;
         totalPL += profit;
+
         const sellMonth = sellRecord.timestamp.substring(0, 7);
+        const sellDay = sellRecord.timestamp.substring(0, 10);
+
         monthlyPL[sellMonth] = (monthlyPL[sellMonth] || 0) + profit;
         if (sellMonth === currentYearMonth) currentMonthPL += profit;
+        if (sellDay === currentDay) todayPL += profit; // ✅ 오늘 날짜와 일치하면 오늘 손익에 더하기
       }
     }
   });
@@ -103,7 +114,7 @@ const calculateAnalytics = (records: RecordData[]): AnalyticsData => {
     avgBuyPrices[curr] = avg;
   }
 
-  return { totalPL, currentMonthPL, monthlyPL, holdings, avgBuyPrices, limitUsage, soldBuyIds };
+  return { totalPL, currentMonthPL, todayPL, monthlyPL, holdings, avgBuyPrices, limitUsage, soldBuyIds };
 };
 
 
@@ -111,8 +122,14 @@ function App() {
   const [allRecords, setAllRecords] = useState<RecordData[]>([]); 
   const [records, setRecords] = useState<RecordData[]>([]); 
   const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalPL: 0, currentMonthPL: 0, monthlyPL: {}, holdings: {}, avgBuyPrices: {},
-    limitUsage: { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } }, soldBuyIds: []
+    totalPL: 0, 
+    currentMonthPL: 0,
+    todayPL: 0,
+    monthlyPL: {}, 
+    holdings: {}, 
+    avgBuyPrices: {},
+    limitUsage: { daily: { SW: 0, HR: 0 }, monthly: { SW: 0, HR: 0 } }, 
+    soldBuyIds: []
   });
   
   const [loading, setLoading] = useState<boolean>(false);
@@ -456,6 +473,9 @@ function App() {
             <div className="dashboard-item">
               <h3>당월 손익</h3>
               <p className={analytics.currentMonthPL >= 0 ? 'profit' : 'loss'}>{Math.round(analytics.currentMonthPL).toLocaleString()} 원</p>
+              <p className={`today-pl ${analytics.todayPL > 0 ? 'profit' : analytics.todayPL < 0 ? 'loss' : ''}`}>
+                ({analytics.todayPL > 0 ? '+' : ''}{Math.round(analytics.todayPL).toLocaleString()}원)
+              </p>
             </div>
           </div>
         </section>

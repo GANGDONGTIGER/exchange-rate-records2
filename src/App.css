@@ -656,3 +656,21 @@ input:focus, select:focus {
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
+/* ✅ 당일 손익 텍스트 꾸미기 */
+.today-pl {
+  font-size: 12px; /* 기존 금액 폰트보다 작게 */
+  font-weight: 600;
+  margin-top: 4px; /* 위 금액과 살짝 띄우기 */
+  margin-bottom: 0;
+}
+
+/* * 참고: 기존 코드에 있는 .profit 과 .loss 클래스를 같이 썼기 때문에, 
+ * 만약 앱 전체에서 수익이 빨강, 손실이 파랑으로 설정되어 있다면 자동으로 색상이 입혀집니다.
+ * (혹시 명확하게 한 번 더 박아두고 싶으시다면 아래 코드를 써주세요!) 
+ */
+.today-pl.profit {
+  color: #e74c3c; /* 빨간색 (+) */
+}
+.today-pl.loss {
+  color: #3498db; /* 파란색 (-) */
+}
