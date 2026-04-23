@@ -46,7 +46,7 @@ const HoldingsStatus: React.FC<HoldingsStatusProps> = ({ records, soldBuyIds }) 
         className="accordion-toggle" 
         aria-expanded={isOpen}
       >
-        📊 보유 현황 {isOpen ? <span>▲</span> : <span>▼</span>}
+        보유 현황 {isOpen ? <span>▲</span> : <span>▼</span>}
       </button>
       
       {isOpen && (
