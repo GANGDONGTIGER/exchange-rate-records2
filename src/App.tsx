@@ -541,23 +541,23 @@ function App() {
                   <div className="form-row">
                     <div className="form-group">
                        <label>금액 (외화)</label>
-                       <input type="text" name="foreignAmount" value={formatDisplayValue(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
+                       <input type="text" inputMode="decimal" name="foreignAmount" value={formatDisplayValue(formData.foreignAmount)} onChange={handleInputChange} placeholder="예: 100" />
                     </div>
                     <div className="form-group">
                        <label>환율</label>
-                       <input type="text" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
+                       <input type="text" inputMode="decimal" name="exchangeRate" value={formatDisplayValue(formData.exchangeRate)} onChange={handleInputChange} placeholder="예: 1300" />
                     </div>
                   </div>
                   
                   {formData.currency === 'BTC' && (
                       <div className="form-group" style={{ marginTop: '-10px', marginBottom: '15px' }}>
                          <label style={{ color: '#e67e22', fontWeight: 'bold' }}>수수료 (원화)</label>
-                         <input type="text" name="fee" value={formatDisplayValue(formData.fee)} onChange={handleInputChange} placeholder="예: 5000" style={{ borderColor: '#e67e22' }} />
+                         <input type="text" inputMode="decimal" name="fee" value={formatDisplayValue(formData.fee)} onChange={handleInputChange} placeholder="예: 5000" style={{ borderColor: '#e67e22' }} />
                       </div>
                   )}    
                    <div className="form-group">
                        <label>원화 환산</label>
-                       <input type="text" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
+                       <input type="text" inputMode="decimal" name="baseAmount" value={formatDisplayValue(formData.baseAmount)} readOnly placeholder="자동 계산" />
                     </div>
                 </>
                 ) : (
@@ -566,6 +566,7 @@ function App() {
                    <label style={{ color: '#8e44ad', fontWeight: 'bold' }}>거래 금액</label>
                    <input 
                      type="text" 
+                     inputMode="decimal"
                      name="baseAmount" 
                      value={formatDisplayValue(formData.baseAmount)} 
                      onChange={handleInputChange} 
